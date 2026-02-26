@@ -1,49 +1,137 @@
 import { Badge } from "@/components/ui/badge";
 
 const doctors = [
-  { name: "Dr. Rajesh Sharma", specialty: "Cardiology", qualification: "MD, DM Cardiology", experience: "18 years", availability: "Sun–Fri" },
-  { name: "Dr. Sunita Rai", specialty: "Pediatrics", qualification: "MD Pediatrics", experience: "12 years", availability: "Sun–Fri" },
-  { name: "Dr. Bikash Chaudhary", specialty: "Orthopedics", qualification: "MS Orthopedics", experience: "15 years", availability: "Sun–Thu" },
-  { name: "Dr. Anita Gupta", specialty: "Neurology", qualification: "MD, DM Neurology", experience: "10 years", availability: "Sun–Fri" },
-  { name: "Dr. Prakash Jha", specialty: "General Surgery", qualification: "MS Surgery", experience: "20 years", availability: "Sun–Fri" },
-  { name: "Dr. Meena Thapa", specialty: "Ophthalmology", qualification: "MS Ophthalmology", experience: "8 years", availability: "Mon–Fri" },
-  { name: "Dr. Arjun Pokharel", specialty: "General Medicine", qualification: "MD Internal Medicine", experience: "14 years", availability: "Sun–Fri" },
-  { name: "Dr. Sita Devi", specialty: "ENT", qualification: "MS ENT", experience: "11 years", availability: "Sun–Thu" },
+  {
+    name: "Dr. Ramesh Chaurasia",
+    specialty: "Nephrology",
+    qualification: "MD, DM (Nephrology)",
+    image: "https://i.imgur.com/oOneoU6.jpg",
+    available: true,
+    experience: "10 years",
+  },
+  {
+    name: "Dr. Sangeeta Mishra",
+    specialty: "Obstetrics & Gynecology",
+    qualification: "MBBS, MS (OB-GYN)",
+    image: "https://i.imgur.com/Vu3ObhC.jpg",
+    available: true,
+    experience: "10 years",
+  },
+  {
+    name: "Dr. Ajay Mahato",
+    specialty: "Orthopedic Surgery",
+    qualification: "MBBS, MS (Ortho) - AIIMS",
+    image: "https://i.imgur.com/0PmSuNt.jpg",
+    available: true,
+    experience: "10 years",
+  },
+  {
+    name: "Dr. Manish Agrawal",
+    specialty: "General Surgery",
+    qualification: "MBBS, MS (Surgery)",
+    image: "https://i.imgur.com/ASdmiN1.jpg",
+    available: true,
+    experience: "10 years",
+  },
+  {
+    name: "Dr. Ranjeev Yadav",
+    specialty: "Radiology",
+    qualification: "MBBS, MD (Radiology)",
+    image: "https://i.imgur.com/b9KM8o5.jpg",
+    available: true,
+    experience: "10 years",
+  },
+  {
+    name: "Dr. Shrijana Yadav",
+    specialty: "Pathology",
+    qualification: "MBBS, MD (Pathology)",
+    image: "https://i.imgur.com/sAWlGhC.jpg",
+    available: true,
+    experience: "10 years",
+  },
+  {
+    name: "Dr. Tek Narayan Yadav",
+    specialty: "Senior Laparoscopic and GI Surgeon",
+    qualification:
+      "MBBS (BPKIHS), MS (General Surgery) PGIMER, MCh (Surgical Gastroenterology) BPKIHS",
+    image: "https://i.imgur.com/QaeLFUy.jpg",
+    available: true,
+    experience: "10 years",
+  },
 ];
 
-const Doctors = () => (
-  <div>
-    <section className="bg-primary py-20">
-      <div className="container mx-auto px-4 text-center">
-        <p className="text-primary-foreground/70 text-sm tracking-widest uppercase mb-2">Meet Our Team</p>
-        <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground">Our Doctors</h1>
-        <p className="text-primary-foreground/80 mt-4 max-w-xl mx-auto">
-          Experienced, qualified, and compassionate — our medical team is dedicated to your well-being.
-        </p>
-      </div>
-    </section>
-
-    <section className="py-20 bg-background">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {doctors.map((doc) => (
-            <div key={doc.name} className="rounded-lg border border-border bg-card p-6 hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
-                <span className="text-2xl font-display font-bold text-primary">
-                  {doc.name.split(" ").slice(1, 2).map(n => n[0]).join("")}
-                </span>
-              </div>
-              <h3 className="font-display text-lg font-semibold text-card-foreground">{doc.name}</h3>
-              <Badge className="mt-1 bg-secondary text-secondary-foreground">{doc.specialty}</Badge>
-              <p className="text-sm text-muted-foreground mt-3">{doc.qualification}</p>
-              <p className="text-sm text-muted-foreground">{doc.experience} experience</p>
-              <p className="text-sm text-primary font-medium mt-2">Available: {doc.availability}</p>
-            </div>
-          ))}
+const Doctors = () => {
+  return (
+    <div>
+      {/* Hero Section */}
+      <section className="bg-primary py-20">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-primary-foreground/70 text-sm tracking-widest uppercase mb-2">
+            Meet Our Team
+          </p>
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground">
+            Our Doctors
+          </h1>
+          <p className="text-primary-foreground/80 mt-4 max-w-xl mx-auto">
+            Experienced, qualified, and compassionate — our medical team is
+            dedicated to your well-being.
+          </p>
         </div>
-      </div>
-    </section>
-  </div>
-);
+      </section>
+
+      {/* Doctors Grid */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {doctors.map((doc) => (
+              <div
+                key={doc.name}
+                className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300"
+              >
+                {/* Doctor Image */}
+                <div className="flex justify-center mb-4">
+                  <img
+                    src={doc.image}
+                    alt={doc.name}
+                    className="w-24 h-24 object-cover rounded-full border-4 border-primary shadow-md"
+                  />
+                </div>
+
+                {/* Name */}
+                <h3 className="font-display text-lg font-semibold text-card-foreground">
+                  {doc.name}
+                </h3>
+
+                {/* Specialty */}
+                <Badge className="mt-2 bg-secondary text-secondary-foreground">
+                  {doc.specialty}
+                </Badge>
+
+                {/* Qualification */}
+                <p className="text-sm text-muted-foreground mt-3">
+                  {doc.qualification}
+                </p>
+
+                {/* Experience */}
+                <p className="text-sm text-muted-foreground">
+                  {doc.experience} experience
+                </p>
+
+                {/* Availability */}
+                <p
+                  className={`text-sm font-medium mt-3 ${
+                    doc.available ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {doc.available ? "Available Today" : "Not Available"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
 
 export default Doctors;
