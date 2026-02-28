@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,8 @@ import {
   Award,
   Users,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Slider from "react-slick";
 
@@ -20,9 +23,9 @@ const heroImages = [
   "https://i.imgur.com/2Ij1JIQ.jpg",
   "https://i.imgur.com/RaWuN9i.jpg",
   "https://i.imgur.com/UAtihd2.jpg",
+  "https://i.imgur.com/UkVdNir.jpg",
 ];
 
-// Departments
 const departments = [
   { name: "Cardiology", icon: Heart, desc: "Heart & cardiovascular care" },
   { name: "General Medicine", icon: Stethoscope, desc: "Primary healthcare services" },
@@ -32,7 +35,6 @@ const departments = [
   { name: "Ophthalmology", icon: Eye, desc: "Eye care & surgery" },
 ];
 
-// Stats
 const stats = [
   { value: "1+", label: "Year of Service", icon: Clock },
   { value: "10+", label: "Expert Doctors", icon: Users },
@@ -40,15 +42,15 @@ const stats = [
   { value: "1000+", label: "Patients Served", icon: Heart },
 ];
 
-// Custom Arrow Components
+// Restored & Modernized Custom Arrows
 const CustomPrevArrow = (props: any) => {
   const { onClick } = props;
   return (
     <button
       onClick={onClick}
-      className="absolute left-2 top-1/2 transform -translate-y-1/2 z-20 text-white/90 hover:text-white text-3xl"
+      className="absolute left-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
     >
-      &#10094;
+      <ChevronLeft size={24} />
     </button>
   );
 };
@@ -58,14 +60,13 @@ const CustomNextArrow = (props: any) => {
   return (
     <button
       onClick={onClick}
-      className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 text-white/90 hover:text-white text-3xl"
+      className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
     >
-      &#10095;
+      <ChevronRight size={24} />
     </button>
   );
 };
 
-// Slider settings
 const sliderSettings = {
   dots: true,
   infinite: true,
@@ -74,56 +75,60 @@ const sliderSettings = {
   autoplaySpeed: 5000,
   slidesToShow: 1,
   slidesToScroll: 1,
-  arrows: true,
-  fade: true,
+  arrows: true, // Arrows Enabled
   prevArrow: <CustomPrevArrow />,
   nextArrow: <CustomNextArrow />,
+  fade: true,
 };
 
 const Index = () => {
   return (
-    <div>
-      {/* Hero Slider */}
-      <section className="relative h-[95vh] min-h-[700px] flex items-center overflow-hidden">
-        <Slider {...sliderSettings} className="h-full w-full">
-          {heroImages.map((img, idx) => (
-            <div key={idx} className="relative h-[95vh] min-h-[700px]">
-              <img
-                src={img}
-                alt={`Hero ${idx + 1}`}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/50"></div>
-            </div>
-          ))}
-        </Slider>
+    <div className="bg-white font-sans antialiased text-slate-900">
+      
+      {/* --- 1. HERO SLIDER SECTION --- */}
+      <section className="relative h-[95vh] min-h-[700px] flex items-center overflow-hidden bg-slate-900">
+        <div className="absolute inset-0 w-full h-full z-0">
+          <Slider {...sliderSettings} className="h-full w-full">
+            {heroImages.map((img, idx) => (
+              <div key={idx} className="relative h-[95vh] min-h-[700px]">
+                <img
+                  src={img}
+                  alt={`Hero ${idx + 1}`}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[5000ms] scale-110"
+                />
+                <div className="absolute inset-0 bg-black/45 backdrop-brightness-95" />
+              </div>
+            ))}
+          </Slider>
+        </div>
 
-        <div className="absolute inset-0 z-10 container mx-auto px-4 flex items-center">
-          <div className="max-w-2xl text-center md:text-left w-full">
-            <p className="text-white/80 text-sm font-semibold tracking-widest uppercase mb-4">
-              Biratnagar's Trusted Healthcare
-            </p>
-            <h1 className="font-display text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
-              Your Health, <br />
-              <span className="text-primary">Our Priority</span>
+        <div className="relative z-10 container mx-auto px-6 h-full flex items-center pointer-events-none">
+          <div className="max-w-4xl text-center md:text-left w-full pointer-events-auto">
+            <div className="inline-block px-4 py-1.5 mb-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20">
+              <p className="text-white text-[10px] font-bold tracking-[0.3em] uppercase">
+                Premium Multi-Specialty Institution
+              </p>
+            </div>
+            
+            {/* Title: No Italics, Bold/Light Mix */}
+            <h1 className="text-6xl md:text-8xl font-serif text-white mb-8 tracking-tight drop-shadow-lg leading-[1.1]">
+              <span className="font-light">In the</span> <span className="font-bold">Heart</span><br />
+              <span className="font-light">of</span> <span className="font-bold">Biratnagar</span>
             </h1>
-            <p className="text-white/80 text-lg mb-8 max-w-lg">
-              Comprehensive, compassionate medical care with state-of-the-art facilities and experienced specialists.
+            
+            <p className="text-white/90 text-lg md:text-xl mb-10 max-w-xl leading-relaxed font-medium drop-shadow-md backdrop-blur-[2px] py-2">
+              Prime Hospital integrates world-class clinical expertise with 
+              state-of-the-art diagnostic technology for our community.
             </p>
-            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+            
+            <div className="flex flex-wrap gap-5 justify-center md:justify-start">
               <Link to="/appointments">
-                <Button
-                  size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8"
-                >
+                <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-200 font-bold px-10 h-16 rounded-full shadow-2xl transition-all active:scale-95">
                   Book Appointment
                 </Button>
               </Link>
               <Link to="/departments">
-                <Button
-                  size="lg"
-                  className="bg-white/20 text-white hover:bg-white/30 font-semibold px-8"
-                >
+                <Button size="lg" className="bg-white/10 text-white hover:bg-white/20 backdrop-blur-md border border-white/20 font-bold px-10 h-16 rounded-full transition-all">
                   Our Departments
                 </Button>
               </Link>
@@ -132,76 +137,80 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-primary text-primary-foreground py-12">
-        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {stats.map((s) => (
-            <div key={s.label} className="flex flex-col items-center gap-2">
-              <s.icon className="h-8 w-8 opacity-80" />
-              <span className="font-display text-3xl font-bold">{s.value}</span>
-              <span className="text-sm opacity-80">{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Departments Preview */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-2">
-              Specialties
-            </p>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">
-              Our Departments
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {departments.map((d) => (
-              <div
-                key={d.name}
-                className="group p-6 rounded-lg border border-border bg-card hover:border-primary/50 hover:shadow-lg transition-all duration-300"
-              >
-                <d.icon className="h-10 w-10 text-primary mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="font-display text-xl font-semibold text-card-foreground mb-2">
-                  {d.name}
-                </h3>
-                <p className="text-muted-foreground text-sm">{d.desc}</p>
+      {/* --- 2. STATS SECTION --- */}
+      <section className="relative -mt-16 z-20 container mx-auto px-6">
+        <div className="bg-slate-900 rounded-[3rem] p-12 text-white shadow-2xl border border-white/5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+            {stats.map((s) => (
+              <div key={s.label} className="group flex flex-col items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center mb-2 group-hover:bg-white group-hover:text-slate-900 transition-all duration-500">
+                  <s.icon size={24} />
+                </div>
+                <span className="text-4xl font-bold tracking-tighter">{s.value}</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">{s.label}</span>
               </div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <Link to="/departments">
-              <Button size="lg" className="bg-primary text-primary-foreground font-semibold px-8">
-                View All Departments <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+        </div>
+      </section>
+
+      {/* --- 3. DEPARTMENTS PREVIEW --- */}
+      <section className="py-32 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-20">
+            <h2 className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase mb-4">Specialties</h2>
+            <h3 className="text-4xl md:text-5xl font-serif text-slate-900 tracking-tight">
+              <span className="font-bold text-slate-900">Our</span> <span className="font-light opacity-90">Departments</span>
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {departments.map((d) => (
+              <div
+                key={d.name}
+                className="group p-10 rounded-[2.5rem] border border-slate-100 bg-white hover:bg-slate-50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2"
+              >
+                <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 mb-8 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-inner">
+                  <d.icon size={26} strokeWidth={1.5} />
+                </div>
+                <h4 className="text-xl font-bold mb-3 text-slate-900 tracking-tight">
+                  {d.name}
+                </h4>
+                <p className="text-slate-500 text-sm leading-relaxed font-light">{d.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Doctors Banner */}
-      <section
-        className="relative bg-cover bg-center h-[400px] flex items-center justify-center mb-6"
-        style={{ backgroundImage: "url('https://i.imgur.com/Qn0pz2o.jpg')" }}
-      >
-        <div className="absolute inset-0 bg-black/50"></div>
-        <div className="relative z-10 text-center text-white px-4">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-            Meet Our Doctors
-          </h2>
-          <p className="text-white/80 max-w-lg mx-auto">
-            Experienced and compassionate professionals ready to care for you.
-          </p>
-          <div className="mt-6">
-            <Link to="/doctors">
-              <Button size="lg" className="bg-primary text-primary-foreground font-semibold px-8">
-                View All Doctors
-              </Button>
-            </Link>
+      {/* --- 4. DOCTORS CALLOUT --- */}
+      <section className="py-24 container mx-auto px-6">
+        <div 
+          className="relative rounded-[3rem] overflow-hidden min-h-[500px] flex items-center group shadow-2xl"
+          style={{ backgroundImage: "url('https://i.imgur.com/Qn0pz2o.jpg')", backgroundPosition: "center 25%", backgroundSize: "cover" }}
+        >
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-all duration-700" />
+          
+          <div className="relative z-10 w-full p-12 md:p-24 text-center md:text-left text-white">
+            <div className="max-w-2xl">
+              <h2 className="text-4xl md:text-6xl font-serif mb-6 leading-tight">
+                Meet <span className="font-light opacity-90">Our</span> <br />
+                <span className="font-bold">Medical Experts</span>
+              </h2>
+              <p className="text-white/80 text-lg mb-10 font-light leading-relaxed">
+                Experienced and compassionate professionals dedicated to 
+                providing world-class clinical care to Biratnagar.
+              </p>
+              <Link to="/doctors">
+                <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-200 rounded-full font-bold px-12 h-16 shadow-xl active:scale-95 transition-transform">
+                  View All Doctors
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
+      
     </div>
   );
 };

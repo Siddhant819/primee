@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -11,73 +18,98 @@ const Navbar = () => {
     { name: "Departments", path: "/departments" },
     { name: "Doctors", path: "/doctors" },
     { name: "Appointments", path: "/appointments" },
-    { name: "Contact", path: "/contact" },
     { name: "Gallery", path: "/gallery" },
+    { name: "Contact", path: "/contact" },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-emerald-100 shadow-sm">
-      <div className="container mx-auto px-6 py-3 flex justify-between items-center">
+    <nav 
+      className={`sticky top-0 z-[100] transition-all duration-500 ${
+        scrolled 
+          ? "bg-white/90 backdrop-blur-2xl py-4 shadow-md border-b border-slate-100" 
+          : "bg-white py-6"
+      }`}
+    >
+      <div className="container mx-auto px-6 flex justify-between items-center">
 
         {/* --- LOGO SECTION --- */}
         <Link to="/" className="flex items-center gap-3 group">
           <img 
             src="/logo.jpg"
             alt="Prime Hospital Logo"
-            className="h-11 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            className="h-12 w-auto object-contain transition-transform duration-700 group-hover:rotate-[360deg]"
           />
-          <span className="font-bold text-xl bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent tracking-wide">
-            Prime Hospital
-          </span>
+          <div className="flex flex-col leading-none">
+            <span className="font-serif text-2xl tracking-tighter text-slate-950">
+              <span className="font-light">PRIME</span> <span className="font-black">HOSPITAL</span>
+            </span>
+            <span className="text-[8px] font-bold tracking-[0.5em] text-slate-400 mt-1 uppercase">Biratnagar</span>
+          </div>
         </Link>
 
-        {/* --- MOBILE BUTTON --- */}
-        <button
-          className="md:hidden text-emerald-700 hover:text-emerald-900 transition"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X size={28} /> : <Menu size={28} />}
-        </button>
-
-        {/* --- NAVIGATION LINKS --- */}
-        <div
-          className={`
-            absolute md:static top-[72px] left-0 w-full md:w-auto 
-            bg-white md:bg-transparent md:backdrop-blur-none
-            border-b md:border-none border-emerald-100
-            px-6 py-8 md:p-0 
-            flex flex-col md:flex-row md:items-center md:space-x-8
-            transition-all duration-300 ease-in-out
-            ${isOpen 
-              ? "translate-y-0 opacity-100 visible" 
-              : "-translate-y-5 opacity-0 invisible md:translate-y-0 md:opacity-100 md:visible"}
-          `}
-        >
+        {/* --- DESKTOP NAV --- */}
+        <div className="hidden md:flex items-center space-x-10">
           {navLinks.map((link) => (
             <NavLink
               key={link.path}
               to={link.path}
-              onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
-                `relative text-sm lg:text-base font-medium py-2 md:py-0 transition-all duration-300 ${
-                  isActive
-                    ? "text-emerald-600"
-                    : "text-gray-700 hover:text-emerald-600"
+                `relative text-[12px] uppercase tracking-[0.25em] transition-all duration-300 hover:scale-110 ${
+                  isActive 
+                    ? "text-slate-950 font-black" 
+                    : "text-slate-500 font-bold hover:text-slate-950"
                 }`
               }
             >
               {({ isActive }) => (
-                <span className="relative">
+                <span className="flex flex-col items-center">
                   {link.name}
                   <span
-                    className={`absolute left-0 -bottom-1 h-[2px] w-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-transform duration-300 ${
-                      isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
-                    } origin-left`}
-                  ></span>
+                    className={`h-[3px] bg-slate-950 mt-1 transition-all duration-500 rounded-full ${
+                      isActive ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-full"
+                    }`}
+                  />
                 </span>
               )}
             </NavLink>
           ))}
+        </div>
+
+        {/* --- MOBILE BUTTON --- */}
+        <button
+          className="md:hidden text-slate-950 p-2 hover:bg-slate-50 rounded-xl transition-colors"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          {isOpen ? <X size={28} /> : <Menu size={28} strokeWidth={2.5} />}
+        </button>
+
+        {/* --- MOBILE MENU --- */}
+        <div
+          className={`
+            fixed inset-0 top-[88px] w-full bg-white/95 backdrop-blur-xl
+            px-10 py-12 flex flex-col space-y-8 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] md:hidden
+            ${isOpen ? "opacity-100 visible translate-x-0" : "opacity-0 invisible translate-x-full"}
+          `}
+        >
+          {navLinks.map((link, index) => (
+            <NavLink
+              key={link.path}
+              to={link.path}
+              onClick={() => setIsOpen(false)}
+              style={{ transitionDelay: `${index * 50}ms` }}
+              className={({ isActive }) => 
+                `text-4xl font-serif tracking-tight border-b border-slate-100 pb-4 ${
+                  isActive ? "font-black text-slate-950" : "font-light text-slate-400"
+                }`
+              }
+            >
+              {link.name}
+            </NavLink>
+          ))}
+          <div className="pt-10">
+            <p className="text-[10px] font-bold tracking-[0.3em] text-slate-400 uppercase mb-4">Emergency Contact</p>
+            <a href="tel:021517777" className="text-2xl font-black text-red-600">021-517777</a>
+          </div>
         </div>
       </div>
     </nav>

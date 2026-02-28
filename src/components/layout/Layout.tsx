@@ -11,7 +11,7 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => (
   <div className="min-h-screen flex flex-col">
     {/* Top emergency info */}
-    <EmergencyBanner />
+    {/* <EmergencyBanner /> */}
 
     {/* Navbar */}
     <Navbar />
