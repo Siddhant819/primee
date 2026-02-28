@@ -1,19 +1,25 @@
 // src/components/layout/Layout.tsx
-import { ReactNode, FC } from "react";
+import { ReactNode } from "react";
 import EmergencyBanner from "./EmergencyBanner";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-// Properly type children
 interface LayoutProps {
   children: ReactNode;
 }
 
-const Layout: FC<LayoutProps> = ({ children }) => (
+const Layout = ({ children }: LayoutProps) => (
   <div className="min-h-screen flex flex-col">
+    {/* Top emergency info */}
     <EmergencyBanner />
+
+    {/* Navbar */}
     <Navbar />
+
+    {/* Main content */}
     <main className="flex-1">{children}</main>
+
+    {/* Footer */}
     <Footer />
   </div>
 );

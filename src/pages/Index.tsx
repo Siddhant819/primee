@@ -12,9 +12,17 @@ import {
   Users,
   ArrowRight,
 } from "lucide-react";
-import heroImage from "@/assets/hero-hospital.png";
-import Gallery from "@/components/gallery/Gallery";
+import Slider from "react-slick";
 
+// Hero images
+const heroImages = [
+  "https://i.imgur.com/XOtGHPL.jpg",
+  "https://i.imgur.com/2Ij1JIQ.jpg",
+  "https://i.imgur.com/RaWuN9i.jpg",
+  "https://i.imgur.com/UAtihd2.jpg",
+];
+
+// Departments
 const departments = [
   { name: "Cardiology", icon: Heart, desc: "Heart & cardiovascular care" },
   { name: "General Medicine", icon: Stethoscope, desc: "Primary healthcare services" },
@@ -24,26 +32,74 @@ const departments = [
   { name: "Ophthalmology", icon: Eye, desc: "Eye care & surgery" },
 ];
 
+// Stats
 const stats = [
-  { value: "20+", label: "Years of Service", icon: Clock },
-  { value: "50+", label: "Expert Doctors", icon: Users },
+  { value: "1+", label: "Year of Service", icon: Clock },
+  { value: "10+", label: "Expert Doctors", icon: Users },
   { value: "15+", label: "Departments", icon: Award },
-  { value: "1L+", label: "Patients Served", icon: Heart },
+  { value: "1000+", label: "Patients Served", icon: Heart },
 ];
+
+// Custom Arrow Components
+const CustomPrevArrow = (props: any) => {
+  const { onClick } = props;
+  return (
+    <button
+      onClick={onClick}
+      className="absolute left-2 top-1/2 transform -translate-y-1/2 z-20 text-white/90 hover:text-white text-3xl"
+    >
+      &#10094;
+    </button>
+  );
+};
+
+const CustomNextArrow = (props: any) => {
+  const { onClick } = props;
+  return (
+    <button
+      onClick={onClick}
+      className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 text-white/90 hover:text-white text-3xl"
+    >
+      &#10095;
+    </button>
+  );
+};
+
+// Slider settings
+const sliderSettings = {
+  dots: true,
+  infinite: true,
+  autoplay: true,
+  speed: 1000,
+  autoplaySpeed: 5000,
+  slidesToShow: 1,
+  slidesToScroll: 1,
+  arrows: true,
+  fade: true,
+  prevArrow: <CustomPrevArrow />,
+  nextArrow: <CustomNextArrow />,
+};
 
 const Index = () => {
   return (
     <div>
-      {/* Hero */}
-      <section className="relative h-[85vh] min-h-[600px] flex items-center">
-        <img
-          src={heroImage}
-          alt="Prime Hospital Biratnagar"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/60" />
-        <div className="relative z-10 container mx-auto px-4">
-          <div className="max-w-2xl">
+      {/* Hero Slider */}
+      <section className="relative h-[95vh] min-h-[700px] flex items-center overflow-hidden">
+        <Slider {...sliderSettings} className="h-full w-full">
+          {heroImages.map((img, idx) => (
+            <div key={idx} className="relative h-[95vh] min-h-[700px]">
+              <img
+                src={img}
+                alt={`Hero ${idx + 1}`}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/50"></div>
+            </div>
+          ))}
+        </Slider>
+
+        <div className="absolute inset-0 z-10 container mx-auto px-4 flex items-center">
+          <div className="max-w-2xl text-center md:text-left w-full">
             <p className="text-white/80 text-sm font-semibold tracking-widest uppercase mb-4">
               Biratnagar's Trusted Healthcare
             </p>
@@ -54,11 +110,11 @@ const Index = () => {
             <p className="text-white/80 text-lg mb-8 max-w-lg">
               Comprehensive, compassionate medical care with state-of-the-art facilities and experienced specialists.
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
               <Link to="/appointments">
                 <Button
                   size="lg"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold text-base px-8"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8"
                 >
                   Book Appointment
                 </Button>
@@ -66,8 +122,7 @@ const Index = () => {
               <Link to="/departments">
                 <Button
                   size="lg"
-                  variant="ghost"
-                  className="!bg-transparent border border-white/40 text-white hover:!bg-white/10 font-semibold text-base px-8"
+                  className="bg-white/20 text-white hover:bg-white/30 font-semibold px-8"
                 >
                   Our Departments
                 </Button>
@@ -77,7 +132,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats Section */}
       <section className="bg-primary text-primary-foreground py-12">
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {stats.map((s) => (
@@ -117,7 +172,7 @@ const Index = () => {
           </div>
           <div className="text-center mt-10">
             <Link to="/departments">
-              <Button size="lg" variant="outline" className="font-semibold px-8">
+              <Button size="lg" className="bg-primary text-primary-foreground font-semibold px-8">
                 View All Departments <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -125,36 +180,25 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Gallery */}
-      {/* <Gallery /> */}
-
-      {/* CTA */}
-      <section className="bg-secondary py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary-foreground mb-4">
-            Need Medical Assistance?
+      {/* Doctors Banner */}
+      <section
+        className="relative bg-cover bg-center h-[400px] flex items-center justify-center mb-6"
+        style={{ backgroundImage: "url('https://i.imgur.com/Qn0pz2o.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-black/50"></div>
+        <div className="relative z-10 text-center text-white px-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+            Meet Our Doctors
           </h2>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Our team of experienced doctors is here to help you 24/7. Book an appointment or call our emergency line.
+          <p className="text-white/80 max-w-lg mx-auto">
+            Experienced and compassionate professionals ready to care for you.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/appointments">
-              <Button
-                size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8"
-              >
-                Book Appointment
+          <div className="mt-6">
+            <Link to="/doctors">
+              <Button size="lg" className="bg-primary text-primary-foreground font-semibold px-8">
+                View All Doctors
               </Button>
             </Link>
-            <a href="tel:021517777">
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2 font-semibold px-8 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-              >
-                Call Emergency
-              </Button>
-            </a>
           </div>
         </div>
       </section>

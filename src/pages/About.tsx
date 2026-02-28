@@ -1,38 +1,60 @@
 import { Shield, Heart, Users, Award } from "lucide-react";
 
 const values = [
-  { icon: Heart, title: "Compassion", desc: "We treat every patient with empathy and dignity, understanding that healing goes beyond medicine." },
-  { icon: Shield, title: "Excellence", desc: "We maintain the highest standards in medical practice, technology, and patient care." },
-  { icon: Users, title: "Teamwork", desc: "Our multidisciplinary team collaborates to deliver the best possible outcomes." },
-  { icon: Award, title: "Integrity", desc: "We uphold transparency and ethical practices in every aspect of our service." },
+  {
+    icon: Heart,
+    title: "Compassion",
+    desc: "We place patients at the heart of everything we do, delivering care with empathy, respect, and genuine concern.",
+  },
+  {
+    icon: Shield,
+    title: "Quality & Safety",
+    desc: "We follow modern medical standards and evidence-based practices to ensure safe, reliable, and effective treatment.",
+  },
+  {
+    icon: Users,
+    title: "Collaboration",
+    desc: "Our doctors, nurses, and specialists work together as one team to provide coordinated and comprehensive care.",
+  },
+  {
+    icon: Award,
+    title: "Integrity",
+    desc: "We are committed to ethical practice, transparency, and accountability in every patient interaction.",
+  },
 ];
 
 const About = () => (
   <div>
     {/* Hero */}
     <section className="bg-primary py-20">
-      <div className="container mx-auto px-4 text-center">
-        <p className="text-primary-foreground/70 text-sm tracking-widest uppercase mb-2">About Us</p>
-        <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground">Prime Hospital</h1>
-        <p className="text-primary-foreground/80 mt-4 max-w-xl mx-auto">
-          A leading healthcare institution in Biratnagar, Nepal, committed to delivering world-class medical services.
+      <div className="container mx-auto px-4 text-center max-w-3xl">
+        <p className="text-primary-foreground/70 text-sm tracking-widest uppercase mb-2">
+          About Us
+        </p>
+        <h1 className="font-display text-4xl md:text-5xl font-bold text-primary-foreground mb-4">
+          Prime Hospital
+        </h1>
+        <p className="text-primary-foreground/80 leading-relaxed text-lg">
+          A modern healthcare institution in Biratnagar, Nepal, dedicated to delivering safe, compassionate, and advanced medical care.
         </p>
       </div>
     </section>
 
     {/* Story */}
     <section className="py-20 bg-background">
-      <div className="container mx-auto px-4 max-w-3xl">
-        <h2 className="font-display text-3xl font-bold text-foreground mb-6">Our Story</h2>
-        <div className="space-y-4 text-muted-foreground leading-relaxed">
+      <div className="container mx-auto px-4 max-w-3xl text-center">
+        <h2 className="font-display text-3xl font-bold text-foreground mb-8">
+          Our Beginning
+        </h2>
+        <div className="space-y-6 text-muted-foreground text-base leading-relaxed max-w-xl mx-auto">
           <p>
-            Founded in 2005, Prime Hospital has grown from a small clinic to one of the most trusted multi-specialty hospitals in eastern Nepal. Located in the heart of Biratnagar, Morang, we serve patients from across Province No. 1 and beyond.
+            Established with a vision to redefine healthcare standards in eastern Nepal, Prime Hospital is a newly founded multi-specialty medical center committed to excellence in patient care.
           </p>
           <p>
-            With over 50 experienced doctors across 15+ departments, state-of-the-art diagnostic facilities, and a 200-bed capacity, we are dedicated to making quality healthcare accessible to our community.
+            Equipped with modern diagnostic technology, well-designed patient facilities, and a dedicated team of skilled professionals, we aim to provide accessible and reliable healthcare services to individuals and families in Biratnagar and surrounding regions.
           </p>
           <p>
-            Our mission is to provide comprehensive, affordable, and compassionate healthcare while continuously advancing our medical capabilities through research and education.
+            As a growing institution, we are focused on continuous improvement, innovation, and building lasting trust within our community. Our foundation is built on quality care, ethical medical practice, and patient-centered service.
           </p>
         </div>
       </div>
@@ -40,17 +62,29 @@ const About = () => (
 
     {/* Values */}
     <section className="py-20 bg-secondary">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-2">What Drives Us</p>
-          <h2 className="font-display text-3xl font-bold text-foreground">Our Core Values</h2>
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="text-center mb-14 max-w-3xl mx-auto">
+          <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-2">
+            What Drives Us
+          </p>
+          <h2 className="font-display text-3xl font-bold text-foreground">
+            Our Core Values
+          </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
           {values.map((v) => (
-            <div key={v.title} className="bg-card rounded-lg p-6 text-center border border-border">
-              <v.icon className="h-10 w-10 text-primary mx-auto mb-4" />
-              <h3 className="font-display text-lg font-semibold text-card-foreground mb-2">{v.title}</h3>
-              <p className="text-sm text-muted-foreground">{v.desc}</p>
+            <div
+              key={v.title}
+              className="bg-card rounded-lg p-8 text-center border border-border hover:shadow-lg transition-shadow duration-300"
+            >
+              <v.icon className="h-12 w-12 text-primary mx-auto mb-5" />
+              <h3 className="font-display text-xl font-semibold text-card-foreground mb-3">
+                {v.title}
+              </h3>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                {v.desc}
+              </p>
             </div>
           ))}
         </div>
