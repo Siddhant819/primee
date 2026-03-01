@@ -11,6 +11,7 @@ const AdminUploadReports = () => {
   const [reportLoading, setReportLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [createNewPatient, setCreateNewPatient] = useState(false);
+  const [searchPatientTerm, setSearchPatientTerm] = useState("");
   
   const [formData, setFormData] = useState({
     patientId: "",
@@ -48,6 +49,7 @@ const AdminUploadReports = () => {
       }
     } catch (error) {
       console.error("Error fetching patients:", error);
+      toast.error("Failed to load patients");
     }
   };
 
@@ -63,6 +65,7 @@ const AdminUploadReports = () => {
       }
     } catch (error) {
       console.error("Error fetching reports:", error);
+      toast.error("Failed to load reports");
     }
   };
 
@@ -82,7 +85,21 @@ const AdminUploadReports = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // Validate file type
+      if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+        toast.error('Please select a valid image file (JPEG, PNG, or GIF)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+
+      setSelectedFile(file);
     }
   };
 
@@ -158,7 +175,8 @@ const AdminUploadReports = () => {
       const data = await response.json();
 
       if (data.success) {
-        toast.success(`Report uploaded successfully! Patient ID: ${data.patientId}`);
+        const patientId = data.report?.patientId?.patientId || data.patientId || 'Unknown';
+        toast.success(`Report uploaded successfully! Patient ID: ${patientId}`);
         setSelectedFile(null);
         setFormData({
           patientId: "",
@@ -180,8 +198,8 @@ const AdminUploadReports = () => {
         toast.error(data.message || "Failed to upload report");
       }
     } catch (error) {
+      console.error("Upload error:", error);
       toast.error("An error occurred. Please try again.");
-      console.error(error);
     } finally {
       setReportLoading(false);
     }
@@ -200,11 +218,21 @@ const AdminUploadReports = () => {
       if (data.success) {
         fetchReports();
         toast.success("Report deleted successfully");
+      } else {
+        toast.error(data.message || "Failed to delete report");
       }
     } catch (error) {
       toast.error("Failed to delete report");
+      console.error(error);
     }
   };
+
+  // Filter patients based on search
+  const filteredPatients = patients.filter((p: any) =>
+    p.fullName.toLowerCase().includes(searchPatientTerm.toLowerCase()) ||
+    p.patientId.toLowerCase().includes(searchPatientTerm.toLowerCase()) ||
+    p.email.toLowerCase().includes(searchPatientTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -268,6 +296,13 @@ const AdminUploadReports = () => {
                   <label className="block text-sm font-semibold text-slate-900 mb-2">
                     Select Patient *
                   </label>
+                  <input
+                    type="text"
+                    placeholder="Search by name, ID, or email..."
+                    value={searchPatientTerm}
+                    onChange={(e) => setSearchPatientTerm(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
                   <select
                     value={formData.patientId}
                     onChange={(e) => handlePatientChange(e.target.value)}
@@ -275,12 +310,15 @@ const AdminUploadReports = () => {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                   >
                     <option value="">Choose a patient</option>
-                    {patients.map((patient: any) => (
+                    {filteredPatients.map((patient: any) => (
                       <option key={patient._id} value={patient._id}>
                         {patient.patientId} - {patient.fullName}
                       </option>
                     ))}
                   </select>
+                  {filteredPatients.length === 0 && searchPatientTerm && (
+                    <p className="text-sm text-red-600 mt-2">No patients found matching your search</p>
+                  )}
                 </div>
               )}
 
@@ -381,6 +419,7 @@ const AdminUploadReports = () => {
                       name="reportType"
                       value={formData.reportType}
                       onChange={handleChange}
+                      required
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                     >
                       <option value="X-Ray">X-Ray</option>
@@ -464,7 +503,7 @@ const AdminUploadReports = () => {
                         className="hidden"
                         id="file-input"
                       />
-                      <label htmlFor="file-input" className="cursor-pointer">
+                      <label htmlFor="file-input" className="cursor-pointer block">
                         <Upload size={32} className="mx-auto text-slate-400 mb-2" />
                         <p className="text-sm text-slate-600">
                           {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
@@ -498,7 +537,7 @@ const AdminUploadReports = () => {
                       <div className="flex-1">
                         <p className="font-semibold text-slate-900">{report.reportType}</p>
                         <p className="text-sm text-slate-600">{report.patientName}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-blue-600 font-semibold">
                           ID: {report.patientId?.patientId || 'N/A'}
                         </p>
                         <p className="text-xs text-slate-500">
@@ -507,7 +546,7 @@ const AdminUploadReports = () => {
                       </div>
                       <button
                         onClick={() => deleteReport(report._id)}
-                        className="text-red-600 hover:text-red-800 ml-2"
+                        className="text-slate-400 hover:text-red-600 transition-colors"
                       >
                         <Trash2 size={18} />
                       </button>

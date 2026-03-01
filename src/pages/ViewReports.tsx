@@ -11,12 +11,36 @@ const ViewReports = () => {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [showPatientList, setShowPatientList] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
+  // Get base server URL
+  const SERVER_BASE_URL = API_BASE_URL.replace('/api', '');
+  console.log('Server Base URL:', SERVER_BASE_URL);
+
+  // Fetch all patients for autocomplete
+  const fetchPatients = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE_URL}/patients`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPatients(data.patients || []);
+      }
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+    }
+  };
+
+  // Handle search by patient ID or MongoDB ID
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!patientId.trim()) {
-      toast.error("Please enter your Patient ID");
+      toast.error("Please enter your Patient ID or select from the list");
       return;
     }
 
@@ -25,7 +49,24 @@ const ViewReports = () => {
 
     try {
       const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE_URL}/reports/patient/${patientId}`, {
+      
+      let mongoDbId = patientId;
+      
+      // If input looks like a patientId string (PT followed by numbers), find the MongoDB ID
+      if (patientId.match(/^PT\d+$/i)) {
+        const patient = patients.find(p => p.patientId === patientId.toUpperCase());
+        if (patient) {
+          mongoDbId = patient._id;
+          console.log('Found patient, using MongoDB ID:', mongoDbId);
+        } else {
+          toast.error("Patient ID not found. Please select from the list or check the ID.");
+          setLoading(false);
+          setSearched(false);
+          return;
+        }
+      }
+
+      const response = await fetch(`${API_BASE_URL}/reports/patient/${mongoDbId}`, {
         headers: { Authorization: `Bearer ${token || ''}` },
       });
 
@@ -46,14 +87,95 @@ const ViewReports = () => {
     }
   };
 
-  const downloadReport = (imageUrl: string, fileName: string) => {
-    const fullUrl = `${API_BASE_URL.replace('/api', '')}${imageUrl}`;
-    const a = document.createElement('a');
-    a.href = fullUrl;
-    a.download = fileName;
-    a.click();
-    toast.success("Report download started");
+  // Handle patient selection from list
+  const handleSelectPatient = (patient: any) => {
+    setPatientId(patient.patientId);
+    setShowPatientList(false);
+    setTimeout(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        const event = new Event('submit', { bubbles: true });
+        form.dispatchEvent(event);
+      }
+    }, 100);
   };
+
+  // Download report - SIMPLE AND RELIABLE
+  const downloadReport = async (imageUrl: string, fileName: string) => {
+    setDownloading(true);
+    try {
+      // Construct full URL
+      const fullUrl = `${SERVER_BASE_URL}${imageUrl}`;
+      console.log('Starting download from:', fullUrl);
+
+      // Method 1: Try direct download link
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'image/*'
+        }
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      console.log('Blob received, size:', blob.size);
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || 'report.jpg';
+      link.style.display = 'none';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast.success("Report downloaded successfully!");
+      console.log('Download completed');
+    } catch (error) {
+      console.error('Download error details:', error);
+      
+      // Fallback: Try opening in new window
+      try {
+        const fullUrl = `${SERVER_BASE_URL}${imageUrl}`;
+        const newWindow = window.open(fullUrl, '_blank');
+        if (newWindow) {
+          toast.success("Opening report in new window...");
+          console.log('Opened in new window');
+        } else {
+          toast.error("Failed to download. Please try opening in new window.");
+        }
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        toast.error("Failed to download report. Please try again.");
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Load patients on mount
+  React.useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  // Filter patients based on input
+  const filteredPatients = patients.filter(p =>
+    p.patientId.toLowerCase().includes(patientId.toLowerCase()) ||
+    p.fullName.toLowerCase().includes(patientId.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -66,31 +188,65 @@ const ViewReports = () => {
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-2xl font-bold text-slate-900">My Medical Reports</h1>
+          <h1 className="text-2xl font-bold text-slate-900">View Your Reports</h1>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Search Section */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
           <h2 className="text-xl font-bold text-slate-900 mb-6">Search Your Reports</h2>
-          <form onSubmit={handleSearch} className="flex gap-3">
-            <input
-              type="text"
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value.toUpperCase())}
-              placeholder="Enter your Patient ID (e.g., PT00001)"
-              className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-            />
+          
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="relative">
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Patient ID or Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Enter your Patient ID (e.g., PT00001) or name..."
+                  value={patientId}
+                  onChange={(e) => {
+                    setPatientId(e.target.value);
+                    setShowPatientList(e.target.value.length > 0);
+                  }}
+                  onFocus={() => setShowPatientList(true)}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+                
+                {/* Patient List Dropdown */}
+                {showPatientList && filteredPatients.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                    {filteredPatients.map((patient) => (
+                      <button
+                        key={patient._id}
+                        type="button"
+                        onClick={() => handleSelectPatient(patient)}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-100 border-b border-slate-200 last:border-b-0 transition-colors"
+                      >
+                        <p className="font-semibold text-slate-900">{patient.patientId}</p>
+                        <p className="text-sm text-slate-600">{patient.fullName}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50"
+              className="px-6 py-3 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50 w-full"
             >
-              {loading ? "Searching..." : "Search"}
+              {loading ? "Searching..." : "Search Reports"}
             </button>
           </form>
+
+          <p className="text-sm text-slate-600 mt-4">
+            💡 Tip: You can either enter your Patient ID (PT00001) or your name to find your reports.
+          </p>
         </div>
 
         {/* Reports List */}
@@ -166,10 +322,11 @@ const ViewReports = () => {
                         </button>
                         <button
                           onClick={() => downloadReport(report.reportImageUrl, `Report-${report.reportType}-${Date.now()}.jpg`)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
+                          disabled={downloading}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50"
                         >
                           <Download size={18} />
-                          Download
+                          {downloading ? "Downloading..." : "Download"}
                         </button>
                       </div>
                     </div>
@@ -220,11 +377,20 @@ const ViewReports = () => {
 
                 <div>
                   <p className="text-sm text-slate-600 mb-2">Report Image</p>
-                  <img
-                    src={`${API_BASE_URL.replace('/api', '')}${selectedReport.reportImageUrl}`}
-                    alt={selectedReport.reportType}
-                    className="w-full rounded-lg border border-slate-200"
-                  />
+                  <div className="relative bg-slate-200 rounded-lg overflow-hidden" style={{ minHeight: '300px' }}>
+                    <img
+                      src={`${SERVER_BASE_URL}${selectedReport.reportImageUrl}`}
+                      alt={selectedReport.reportType}
+                      className="w-full h-auto"
+                      onError={(e) => {
+                        console.error('Image failed to load from:', `${SERVER_BASE_URL}${selectedReport.reportImageUrl}`);
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23999"%3EImage Failed to Load%3C/text%3E%3C/svg%3E';
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully');
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {selectedReport.description && (
@@ -239,10 +405,11 @@ const ViewReports = () => {
                 <div className="flex gap-3 pt-4 border-t border-slate-200">
                   <button
                     onClick={() => downloadReport(selectedReport.reportImageUrl, `Report-${selectedReport.reportType}-${Date.now()}.jpg`)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                    disabled={downloading}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
                   >
                     <Download size={18} />
-                    Download Report
+                    {downloading ? "Downloading..." : "Download Report"}
                   </button>
                   <button
                     onClick={() => setSelectedReport(null)}
