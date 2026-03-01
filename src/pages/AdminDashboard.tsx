@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Users, Calendar, MessageSquare, Plus } from "lucide-react";
+import { LogOut, Users, Calendar, MessageSquare, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/api/config";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ patients: 0, appointments: 0, messages: 0 });
+  const [stats, setStats] = useState({ patients: 0, appointments: 0, messages: 0, reports: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem("authToken");
-      const [patientsRes, appointmentsRes, messagesRes] = await Promise.all([
+      const [patientsRes, appointmentsRes, messagesRes, reportsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/patients`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -31,16 +31,21 @@ const AdminDashboard = () => {
         fetch(`${API_BASE_URL}/messages`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`${API_BASE_URL}/reports`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       const patientsData = await patientsRes.json();
       const appointmentsData = await appointmentsRes.json();
       const messagesData = await messagesRes.json();
+      const reportsData = await reportsRes.json();
 
       setStats({
         patients: patientsData.patients?.length || 0,
         appointments: appointmentsData.appointments?.length || 0,
         messages: messagesData.messages?.length || 0,
+        reports: reportsData.reports?.length || 0,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -78,6 +83,13 @@ const AdminDashboard = () => {
       color: "bg-purple-500",
       path: "/admin/messages",
     },
+    {
+      title: "Reports",
+      count: stats.reports,
+      icon: FileText,
+      color: "bg-orange-500",
+      path: "/admin/reports",
+    },
   ];
 
   return (
@@ -99,7 +111,7 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           {dashboardItems.map((item) => (
             <div
               key={item.path}
@@ -119,12 +131,12 @@ const AdminDashboard = () => {
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h2 className="text-xl font-bold text-slate-900 mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <button
               onClick={() => navigate("/admin/patients")}
               className="flex items-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
             >
-              <Plus size={18} />
+              <Users size={18} />
               Manage Patients
             </button>
             <button
@@ -140,6 +152,13 @@ const AdminDashboard = () => {
             >
               <MessageSquare size={18} />
               View Messages
+            </button>
+            <button
+              onClick={() => navigate("/admin/reports")}
+              className="flex items-center gap-2 px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all"
+            >
+              <FileText size={18} />
+              Upload Reports
             </button>
           </div>
         </div>
