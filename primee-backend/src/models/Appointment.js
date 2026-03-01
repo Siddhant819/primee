@@ -5,23 +5,23 @@ const appointmentSchema = new mongoose.Schema(
     patientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Patient',
-      required: true
+      default: null  // ← Make it optional
     },
     patientName: {
       type: String,
-      required: true
+      required: [true, 'Patient name is required']
     },
     email: {
       type: String,
-      required: true
+      required: [true, 'Email is required']
     },
     phone: {
       type: String,
-      required: true
+      required: [true, 'Phone is required']
     },
     department: {
       type: String,
-      required: true
+      required: [true, 'Department is required']
     },
     doctor: {
       type: String,
@@ -29,15 +29,16 @@ const appointmentSchema = new mongoose.Schema(
     },
     appointmentDate: {
       type: Date,
-      required: true
+      required: [true, 'Appointment date is required']
     },
     timeSlot: {
       type: String,
-      required: true
+      required: [true, 'Time slot is required']
     },
     reason: {
       type: String,
-      trim: true
+      trim: true,
+      default: null
     },
     status: {
       type: String,
