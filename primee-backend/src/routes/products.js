@@ -1,54 +1,134 @@
 import express from 'express';
-import User from '../models/User.js';
+import Product from '../models/Product.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get current user
-router.get('/me', authenticate, async (req, res) => {
+// Get all products
+router.get('/', async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
-    res.json({ success: true, user });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Update user profile
-router.put('/me', authenticate, async (req, res) => {
-  try {
-    const { name, phone, avatar } = req.body;
+    const { category, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
     
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      { name, phone, avatar },
-      { new: true, runValidators: true }
-    );
+    let query = { isActive: true };
+    
+    if (category) query.category = category;
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
 
-    res.json({ success: true, message: 'Profile updated', user });
+    const skip = (page - 1) * limit;
+    const products = await Product.find(query)
+      .skip(skip)
+      .limit(Number(limit))
+      .populate('createdBy', 'name email');
+
+    const total = await Product.countDocuments(query);
+
+    res.json({
+      success: true,
+      products,
+      pagination: {
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Get all users
-router.get('/', authenticate, async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.json({ success: true, users });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get user by ID
+// Get product by ID
 router.get('/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    const product = await Product.findById(req.params.id).populate('createdBy', 'name email');
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
-    res.json({ success: true, user });
+    res.json({ success: true, product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create product
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const { name, description, price, category, image, stock } = req.body;
+
+    if (!name || !description || !price || !category) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please provide all required fields' 
+      });
+    }
+
+    const product = new Product({
+      name,
+      description,
+      price,
+      category,
+      image,
+      stock,
+      createdBy: req.userId
+    });
+
+    await product.save();
+    await product.populate('createdBy', 'name email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Product created successfully',
+      product
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update product
+router.put('/:id', authenticate, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    if (product.createdBy.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    ).populate('createdBy', 'name email');
+
+    res.json({ success: true, message: 'Product updated', product: updatedProduct });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete product
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    if (product.createdBy.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

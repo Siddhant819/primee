@@ -5,6 +5,9 @@ import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import productRoutes from './routes/products.js';
+import patientRoutes from './routes/patients.js';
+import appointmentRoutes from './routes/appointments.js';
+import messageRoutes from './routes/messages.js';
 
 dotenv.config();
 
@@ -22,6 +25,9 @@ connectDB();
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

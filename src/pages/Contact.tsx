@@ -1,171 +1,206 @@
 import React, { useState } from "react";
-import { MapPin, Phone, Mail, Clock, Send, Facebook } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/api/config";
 
 const Contact = () => {
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast.success("Message sent successfully!");
-      (e.target as HTMLFormElement).reset();
-    }, 800);
-  };
-
-  const contactDetails = [
-    { icon: MapPin, title: "Address", content: "Biratnagar-4, Morang, Nepal" },
-    { icon: Phone, title: "Phone", content: "021-517777 / 9705300777" },
+  const contactInfo = [
+    { icon: Phone, title: "Phone", content: "021-517777" },
     { icon: Mail, title: "Email", content: "info@primehospital.com.np" },
     { icon: Clock, title: "Availability", content: "Emergency 24/7 | OPD 8AM-5PM" },
   ];
 
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Message sent successfully! We'll reply soon.");
+        setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      } else {
+        toast.error(data.message || "Failed to send message");
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="bg-white font-sans antialiased text-slate-900">
-      
-      {/* --- REFINED SMALL BANNER --- */}
+      {/* Hero Section */}
       <section className="relative py-20 md:py-28 flex items-center justify-center overflow-hidden bg-slate-900">
-        {/* Blurred Abstract Background */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 scale-110"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80')" }}
-        />
         <div className="absolute inset-0 bg-slate-950/80" />
-        
         <div className="relative z-10 container mx-auto px-6 text-center">
-          <div className="inline-block px-4 py-1 mb-4 rounded-full bg-white/5 border border-white/10">
-            <p className="text-white/60 text-[9px] font-bold tracking-[0.4em] uppercase">
-              Get In Touch
-            </p>
-          </div>
           <h1 className="text-5xl md:text-6xl font-serif text-white tracking-tight">
             <span className="font-light">Contact</span> <span className="font-bold">Us</span>
           </h1>
+          <p className="text-white/80 text-lg mt-4">
+            Get in touch with Prime Hospital
+          </p>
         </div>
       </section>
 
-      {/* --- MAIN CONTENT SECTION --- */}
+      {/* Main Content */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-            
-            {/* LEFT: INFO & MAP */}
+            {/* Contact Info */}
             <div className="space-y-10">
-              <div className="space-y-2">
-                <h2 className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase">Location</h2>
-                <h3 className="text-3xl font-serif text-slate-900 tracking-tight">
-                  <span className="font-bold">Reach</span> <span className="font-light opacity-80">Prime Hospital</span>
-                </h3>
-              </div>
-
-              {/* Contact Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {contactDetails.map((item) => (
-                  <div key={item.title} className="p-7 rounded-[2rem] border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-500">
-                    <div className="h-9 w-9 rounded-xl bg-slate-900 text-white flex items-center justify-center mb-5">
-                      <item.icon size={18} strokeWidth={1.5} />
+              <div>
+                <h2 className="text-3xl font-bold text-slate-900 mb-8">
+                  Get In Touch
+                </h2>
+                <div className="space-y-6">
+                  {contactInfo.map((info, idx) => (
+                    <div key={idx} className="flex gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-900">
+                        <info.icon size={24} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-slate-900">
+                          {info.title}
+                        </h4>
+                        <p className="text-slate-600">{info.content}</p>
+                      </div>
                     </div>
-                    <h4 className="text-[9px] uppercase font-bold tracking-widest text-slate-400 mb-1">{item.title}</h4>
-                    <p className="text-slate-900 text-sm font-medium leading-relaxed">{item.content}</p>
-                  </div>
-                ))}
-                
-                <a 
-                  href="https://facebook.com/primehospitalbrt" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="p-7 rounded-[2rem] border border-slate-100 bg-blue-50/20 hover:bg-white hover:shadow-lg transition-all duration-500"
-                >
-                  <Facebook className="text-blue-600 mb-5" size={22} fill="currentColor" />
-                  <h4 className="text-[9px] uppercase font-bold tracking-widest text-slate-400 mb-1">Facebook</h4>
-                  <p className="text-slate-900 text-sm font-medium leading-relaxed">@primehospitalbrt</p>
-                </a>
+                  ))}
+                </div>
               </div>
 
-              {/* Map Placeholder */}
-              <div className="rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-xl h-64 bg-slate-50 relative group">
+              {/* Map */}
+              <div className="rounded-xl overflow-hidden h-64 lg:h-96">
                 <iframe
-                  title="Prime Hospital Biratnagar"
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3571.219803131846!2d87.2797672!3d26.4744444!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39ef744766320d7d%3A0xc3f9479630c9a776!2sPrime%20Hospital!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp"
-                  className="w-full h-full grayscale-[40%] group-hover:grayscale-0 transition-all duration-700"
+                  width="100%"
+                  height="100%"
                   style={{ border: 0 }}
-                  allowFullScreen
                   loading="lazy"
-                />
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3575.8981893456015!2d87.2649!3d26.4037!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39ef608a000b8b6d%3A0x1234567890!2sPrime%20Hospital!5e0!3m2!1sen!2snp!4v1234567890"
+                ></iframe>
               </div>
             </div>
 
-            {/* RIGHT: COMPACT FORM CARD */}
-            <div className="relative">
-              <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl overflow-hidden">
-                <h3 className="text-2xl font-serif mb-8">
-                  <span className="font-light">Send a</span> <span className="font-bold">Message</span>
-                </h3>
+            {/* Contact Form */}
+            <div className="bg-slate-50 rounded-2xl p-8 lg:p-10">
+              <h3 className="text-2xl font-bold text-slate-900 mb-6">
+                Send us a Message
+              </h3>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="Your name"
+                  />
+                </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase tracking-widest font-bold opacity-40 ml-1">Full Name</Label>
-                    <Input 
-                      required 
-                      placeholder="Your name" 
-                      className="bg-white/5 border-white/10 rounded-xl h-12 text-white placeholder:text-white/20" 
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="your@email.com"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] uppercase tracking-widest font-bold opacity-40 ml-1">Email</Label>
-                      <Input 
-                        required 
-                        type="email" 
-                        placeholder="you@example.com" 
-                        className="bg-white/5 border-white/10 rounded-xl h-12 text-white placeholder:text-white/20" 
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] uppercase tracking-widest font-bold opacity-40 ml-1">Subject</Label>
-                      <Input 
-                        required 
-                        placeholder="Inquiry Topic" 
-                        className="bg-white/5 border-white/10 rounded-xl h-12 text-white placeholder:text-white/20" 
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Phone (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="+977-1-XXXXXXX"
+                  />
+                </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase tracking-widest font-bold opacity-40 ml-1">Message</Label>
-                    <Textarea 
-                      required 
-                      placeholder="How can we assist you?" 
-                      className="bg-white/5 border-white/10 rounded-2xl min-h-[140px] text-white placeholder:text-white/20" 
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="How can we help?"
+                  />
+                </div>
 
-                  <Button 
-                    type="submit" 
-                    disabled={loading} 
-                    className="w-full h-14 bg-white text-slate-900 hover:bg-slate-100 rounded-full font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-2 mt-4"
-                  >
-                    {loading ? "Sending..." : (
-                      <>
-                        Submit Message <Send size={14} />
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    name="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    required
+                    rows={5}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="Tell us more..."
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50"
+                >
+                  {loading ? "Sending..." : "Send Message"}
+                </button>
+              </form>
             </div>
-
           </div>
         </div>
       </section>
-      
     </div>
   );
 };

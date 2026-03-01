@@ -10,8 +10,8 @@ import {
   ShieldCheck 
 } from "lucide-react";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/api/config";
 
-// Native UI Components (to avoid import errors)
 const CustomBadge = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
   <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${className}`}>
     {children}
@@ -25,21 +25,60 @@ const departments = [
 
 const Appointments = () => {
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    patientName: "",
+    email: "",
+    phone: "",
+    department: "",
+    appointmentDate: "",
+    timeSlot: "",
+    reason: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Simulate API Call
-    setTimeout(() => {
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/appointments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Appointment request submitted! Check your email for confirmation.");
+        setFormData({
+          patientName: "",
+          email: "",
+          phone: "",
+          department: "",
+          appointmentDate: "",
+          timeSlot: "",
+          reason: "",
+        });
+      } else {
+        toast.error(data.message || "Failed to book appointment");
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+      console.error(error);
+    } finally {
       setLoading(false);
-      toast.success("Appointment request submitted! We will contact you shortly.");
-      (e.target as HTMLFormElement).reset();
-    }, 1500);
+    }
   };
 
   return (
-    <div className="bg-white min-h-screen font-sans antialiased text-slate-900">
+    <div className="bg-white min-h-screen font-sans text-slate-900">
       
       {/* --- HERO SECTION --- */}
       <section className="relative py-32 md:py-48 flex items-center justify-center text-center overflow-hidden bg-slate-900">
@@ -51,7 +90,7 @@ const Appointments = () => {
           }} 
         />
         <div className="absolute inset-0 bg-black/45 backdrop-brightness-90" />
-        
+
         <div className="relative container mx-auto px-6 z-10">
           {/* Glass Breadcrumb Pill */}
           <div className="inline-block px-4 py-1.5 mb-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20">
@@ -85,27 +124,26 @@ const Appointments = () => {
                 <CustomBadge className="bg-white/10 text-white border-white/20 mb-6">
                   Direct Contact
                 </CustomBadge>
-                <h2 className="text-3xl font-bold mb-8 leading-tight">
-                  We are here to <span className="font-light italic text-slate-300">help you.</span>
-                </h2>
-                
-                <div className="space-y-8">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                      <Phone size={18} className="text-white" />
-                    </div>
+                <h3 className="text-3xl font-bold mb-6 font-serif">
+                  Get <span className="font-light">in touch</span>
+                </h3>
+                <p className="text-white/70 leading-relaxed mb-8 font-light">
+                  Our dedicated team is ready to help you book your appointment and answer any questions.
+                </p>
+
+                <div className="space-y-6">
+                  <div className="flex items-start gap-3">
+                    <Phone size={18} className="text-white/60 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50 mb-1">Phone</p>
-                      <p className="text-sm font-medium text-white">+977-21-XXXXXX</p>
+                      <p className="text-sm font-medium text-white">021-517777</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                      <Mail size={18} className="text-white" />
-                    </div>
+                  <div className="flex items-start gap-3">
+                    <Mail size={18} className="text-white/60 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-50 mb-1">Email</p>
-                      <p className="text-sm font-medium text-white">info@hospital.com</p>
+                      <p className="text-sm font-medium text-white">info@primehospital.com.np</p>
                     </div>
                   </div>
                 </div>
@@ -123,107 +161,149 @@ const Appointments = () => {
                   </div>
                   <div className="flex items-center gap-3 text-slate-400">
                     <ShieldCheck size={14} />
-                    <span className="text-xs">Secure Patient Portal</span>
+                    <span className="text-xs">100% Secure Booking</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Modern Minimalist Form */}
-            <div className="lg:w-2/3 p-12 md:p-16">
-              <div className="mb-12 flex items-center justify-between">
+            {/* Right Column: Form */}
+            <div className="lg:w-2/3 p-12">
+              <h2 className="text-3xl font-bold text-slate-900 mb-8">
+                Schedule Your <span className="font-light opacity-70">Visit</span>
+              </h2>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Name */}
                 <div>
-                  <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Patient Information</h3>
-                  <p className="text-slate-400 text-sm mt-1 font-medium">Please fill in the details below</p>
-                </div>
-                <CalendarCheck className="text-slate-100 hidden md:block" size={48} />
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-10">
-                {/* Row 1: Personal Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="group space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-slate-900 transition-colors block ml-1">
-                      Full Name
-                    </label>
-                    <input 
-                      required 
-                      placeholder="Enter your full name"
-                      className="w-full border-0 border-b border-slate-200 bg-transparent rounded-none px-1 h-10 focus:ring-0 focus:border-slate-900 transition-all text-lg placeholder:text-slate-300 outline-none" 
-                    />
-                  </div>
-                  <div className="group space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-slate-900 transition-colors block ml-1">
-                      Phone Number
-                    </label>
-                    <input 
-                      required 
-                      type="tel" 
-                      placeholder="98XXXXXXXX"
-                      className="w-full border-0 border-b border-slate-200 bg-transparent rounded-none px-1 h-10 focus:ring-0 focus:border-slate-900 transition-all text-lg placeholder:text-slate-300 outline-none" 
-                    />
-                  </div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="patientName"
+                    value={formData.patientName}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="John Doe"
+                  />
                 </div>
 
-                {/* Row 2: Logistics */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="group space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block ml-1">
-                      Preferred Date
+                {/* Email & Phone */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Email *
                     </label>
-                    <input 
-                      required 
-                      type="date" 
-                      className="w-full border-0 border-b border-slate-200 bg-transparent rounded-none px-1 h-10 focus:ring-0 focus:border-slate-900 transition-all text-lg outline-none" 
-                    />
-                  </div>
-                  <div className="group space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block ml-1">
-                      Medical Department
-                    </label>
-                    <select 
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
                       required
-                      className="w-full border-0 border-b border-slate-200 bg-transparent rounded-none px-1 h-10 focus:ring-0 focus:border-slate-900 transition-all text-lg outline-none appearance-none cursor-pointer"
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Phone *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      placeholder="+977-1-XXXXXXX"
+                    />
+                  </div>
+                </div>
+
+                {/* Department */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Department *
+                  </label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  >
+                    <option value="">Select a department</option>
+                    {departments.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Date & Time */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      name="appointmentDate"
+                      value={formData.appointmentDate}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Time Slot *
+                    </label>
+                    <select
+                      name="timeSlot"
+                      value={formData.timeSlot}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                     >
-                      <option value="" disabled selected>Select Department</option>
-                      {departments.map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
+                      <option value="">Select time</option>
+                      <option value="09:00 AM">09:00 AM</option>
+                      <option value="10:00 AM">10:00 AM</option>
+                      <option value="11:00 AM">11:00 AM</option>
+                      <option value="02:00 PM">02:00 PM</option>
+                      <option value="03:00 PM">03:00 PM</option>
+                      <option value="04:00 PM">04:00 PM</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Row 3: Message */}
-                <div className="group space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block ml-1">
-                    Symptoms / Concerns
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Reason for Visit (Optional)
                   </label>
-                  <textarea 
-                    placeholder="Briefly describe your medical concern..."
-                    className="w-full border-0 border-b border-slate-200 bg-transparent rounded-none px-1 min-h-[80px] focus:ring-0 focus:border-slate-900 transition-all text-lg placeholder:text-slate-300 outline-none resize-none" 
+                  <textarea
+                    name="reason"
+                    value={formData.reason}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="Describe your symptoms or reason for visit..."
+                    rows={4}
                   />
                 </div>
 
-                {/* Action Button */}
-                <div className="pt-6">
-                  <button 
-                    type="submit" 
-                    disabled={loading} 
-                    className="w-full md:w-auto px-16 bg-slate-900 text-white hover:bg-slate-800 rounded-full h-16 font-bold text-lg shadow-2xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Confirm Booking"
-                    )}
-                  </button>
-                  <p className="mt-6 text-[10px] text-slate-400 uppercase tracking-widest font-medium ml-1">
-                    * Our team will call you to confirm the final time slot.
-                  </p>
-                </div>
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-slate-900 text-white font-semibold py-3.5 rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CalendarCheck size={20} />
+                  {loading ? "Booking..." : "Book Appointment"}
+                </button>
               </form>
             </div>
           </div>
