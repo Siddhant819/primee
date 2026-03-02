@@ -23,7 +23,7 @@ const AdminUploadReports = () => {
     patientGender: "",
     reportType: "X-Ray",
     department: "",
-    reportDate: new Date().toISOString().split('T')[0], // Auto set to today
+    reportDate: new Date().toISOString().split('T')[0],
     description: "",
     doctorName: "",
   });
@@ -80,7 +80,6 @@ const AdminUploadReports = () => {
     }));
   };
 
-  // Handle patient search
   const handlePatientSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setFormData((prev) => ({
@@ -100,7 +99,6 @@ const AdminUploadReports = () => {
     }
   };
 
-  // Select patient from dropdown
   const handleSelectPatient = (patient: any) => {
     setFormData((prev) => ({
       ...prev,
@@ -110,6 +108,7 @@ const AdminUploadReports = () => {
     setShowPatientDropdown(false);
   };
 
+  // FIXED: Accumulate files instead of replacing them
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -126,9 +125,10 @@ const AdminUploadReports = () => {
         return true;
       });
 
-      setSelectedFiles(validFiles);
+      // KEY FIX: Add new files to existing ones instead of replacing
+      setSelectedFiles((prevFiles) => [...prevFiles, ...validFiles]);
       if (validFiles.length > 0) {
-        toast.success(`${validFiles.length} file(s) selected`);
+        toast.success(`${validFiles.length} file(s) added to upload queue`);
       }
     }
   };
@@ -158,7 +158,6 @@ const AdminUploadReports = () => {
       }
     }
 
-    // Only require reportType - department, doctorName are optional now
     if (!formData.reportType) {
       toast.error("Please select a report type");
       return;

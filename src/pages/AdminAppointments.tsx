@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, Clock, ArrowLeft, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/api/config";
 
@@ -10,6 +10,7 @@ const AdminAppointments = () => {
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [notes, setNotes] = useState("");
+  const [activeTab, setActiveTab] = useState<"pending" | "confirmed">("pending");
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -55,6 +56,7 @@ const AdminAppointments = () => {
         setSelectedAppointment(null);
         setNotes("");
         fetchAppointments();
+        setActiveTab("confirmed");
       }
     } catch (error) {
       toast.error("Failed to confirm appointment");
@@ -75,6 +77,12 @@ const AdminAppointments = () => {
     }
   };
 
+  // FIXED: Filter appointments into pending and confirmed
+  const pendingAppointments = appointments.filter((apt: any) => apt.status === "pending");
+  const confirmedAppointments = appointments.filter((apt: any) => apt.status === "confirmed");
+
+  const displayedAppointments = activeTab === "pending" ? pendingAppointments : confirmedAppointments;
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -92,6 +100,32 @@ const AdminAppointments = () => {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "pending"
+                ? "bg-yellow-600 text-white"
+                : "bg-white text-slate-900 border border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <Clock size={20} />
+            Pending Appointments ({pendingAppointments.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("confirmed")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "confirmed"
+                ? "bg-green-600 text-white"
+                : "bg-white text-slate-900 border border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <CheckCircle size={20} />
+            Confirmed Appointments ({confirmedAppointments.length})
+          </button>
+        </div>
+
         {loading ? (
           <p className="text-center text-slate-600">Loading...</p>
         ) : (
@@ -99,11 +133,15 @@ const AdminAppointments = () => {
             {/* Appointments List */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                {appointments.length === 0 ? (
-                  <p className="p-6 text-center text-slate-600">No appointments</p>
+                {displayedAppointments.length === 0 ? (
+                  <p className="p-6 text-center text-slate-600">
+                    No {activeTab === "pending" ? "pending" : "confirmed"} appointments
+                  </p>
                 ) : (
                   <table className="w-full">
-                    <thead className="bg-slate-900 text-white">
+                    <thead className={`text-white ${
+                      activeTab === "pending" ? "bg-yellow-600" : "bg-green-600"
+                    }`}>
                       <tr>
                         <th className="px-6 py-3 text-left">Patient</th>
                         <th className="px-6 py-3 text-left">Department</th>
@@ -113,7 +151,7 @@ const AdminAppointments = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {appointments.map((apt: any) => (
+                      {displayedAppointments.map((apt: any) => (
                         <tr
                           key={apt._id}
                           className="border-b border-slate-200 hover:bg-slate-50"
@@ -161,14 +199,47 @@ const AdminAppointments = () => {
                     <p className="text-sm text-slate-600">Patient Name</p>
                     <p className="font-semibold">{selectedAppointment.patientName}</p>
                   </div>
+
+                  {/* FIXED: Added Phone Number Display */}
+                  <div>
+                    <p className="text-sm text-slate-600 flex items-center gap-2">
+                      <Phone size={16} />
+                      Phone Number
+                    </p>
+                    <p className="font-semibold text-blue-600">
+                      {selectedAppointment.phone || "Not provided"}
+                    </p>
+                  </div>
+
                   <div>
                     <p className="text-sm text-slate-600">Email</p>
                     <p className="font-semibold">{selectedAppointment.email}</p>
                   </div>
+
                   <div>
                     <p className="text-sm text-slate-600">Department</p>
                     <p className="font-semibold">{selectedAppointment.department}</p>
                   </div>
+
+                  <div>
+                    <p className="text-sm text-slate-600">Appointment Date</p>
+                    <p className="font-semibold">
+                      {new Date(selectedAppointment.appointmentDate).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-600">Time Slot</p>
+                    <p className="font-semibold">{selectedAppointment.timeSlot}</p>
+                  </div>
+
+                  {selectedAppointment.reason && (
+                    <div>
+                      <p className="text-sm text-slate-600">Reason</p>
+                      <p className="font-semibold text-slate-900">{selectedAppointment.reason}</p>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 mb-2">
                       Notes for Patient

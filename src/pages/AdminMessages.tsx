@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Mail, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/api/config";
 
@@ -10,6 +10,7 @@ const AdminMessages = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [replyText, setReplyText] = useState("");
+  const [activeTab, setActiveTab] = useState<"unread" | "replied">("unread");
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -78,6 +79,7 @@ const AdminMessages = () => {
         setReplyText("");
         fetchMessages();
         setSelectedMessage(null);
+        setActiveTab("replied");
       }
     } catch (error) {
       toast.error("Failed to send reply");
@@ -98,6 +100,14 @@ const AdminMessages = () => {
     }
   };
 
+  // FIXED: Filter messages into unread and replied
+  const unreadMessages = messages.filter(
+    (msg: any) => msg.status === "new" || msg.status === "read"
+  );
+  const repliedMessages = messages.filter((msg: any) => msg.status === "replied");
+
+  const displayedMessages = activeTab === "unread" ? unreadMessages : repliedMessages;
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -115,25 +125,58 @@ const AdminMessages = () => {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={() => setActiveTab("unread")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "unread"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-slate-900 border border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <Mail size={20} />
+            Unread Messages ({unreadMessages.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("replied")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "replied"
+                ? "bg-green-600 text-white"
+                : "bg-white text-slate-900 border border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <CheckCircle2 size={20} />
+            Replied Messages ({repliedMessages.length})
+          </button>
+        </div>
+
+        {/* Messages Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Messages List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="bg-slate-900 text-white px-6 py-3 font-semibold">
-                Messages ({messages.length})
+              <div className={`text-white px-6 py-3 font-semibold ${
+                activeTab === "unread" ? "bg-blue-600" : "bg-green-600"
+              }`}>
+                {activeTab === "unread" ? "Unread" : "Replied"} Messages ({displayedMessages.length})
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {loading ? (
                   <p className="p-4 text-center text-slate-600">Loading...</p>
-                ) : messages.length === 0 ? (
+                ) : displayedMessages.length === 0 ? (
                   <p className="p-4 text-center text-slate-600">No messages</p>
                 ) : (
-                  messages.map((msg: any) => (
+                  displayedMessages.map((msg: any) => (
                     <button
                       key={msg._id}
                       onClick={() => handleSelectMessage(msg)}
                       className={`w-full text-left px-4 py-3 border-b border-slate-200 hover:bg-slate-50 transition-all ${
-                        selectedMessage?._id === msg._id ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+                        selectedMessage?._id === msg._id 
+                          ? activeTab === "unread" 
+                            ? "bg-blue-50 border-l-4 border-l-blue-500" 
+                            : "bg-green-50 border-l-4 border-l-green-500"
+                          : ""
                       }`}
                     >
                       <p className="font-semibold text-sm text-slate-900">
@@ -193,7 +236,7 @@ const AdminMessages = () => {
                   {selectedMessage.repliedMessage && (
                     <div className="border-t border-slate-200 pt-4 bg-green-50 p-4 rounded">
                       <p className="text-sm text-green-800 font-semibold mb-2">
-                        Your Reply
+                        ✓ Your Reply
                       </p>
                       <p className="text-green-900 whitespace-pre-wrap">
                         {selectedMessage.repliedMessage}
