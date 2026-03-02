@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Clock, ArrowLeft, Phone } from "lucide-react";
+import { CheckCircle, Clock, ArrowLeft, Phone, User, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/api/config";
 
@@ -11,6 +11,7 @@ const AdminAppointments = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [notes, setNotes] = useState("");
   const [activeTab, setActiveTab] = useState<"pending" | "confirmed">("pending");
+  const [createdPatientId, setCreatedPatientId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -52,16 +53,29 @@ const AdminAppointments = () => {
       });
       const data = await response.json();
       if (data.success) {
-        toast.success("Appointment confirmed! Email sent to patient.");
+        const patientId = data.appointment.patientId?.patientId;
+        setCreatedPatientId(patientId);
+        
+        toast.success(
+          `Appointment confirmed! New Patient ID: ${patientId}`
+        );
         setSelectedAppointment(null);
         setNotes("");
         fetchAppointments();
         setActiveTab("confirmed");
+        
+        // Show success notification for 5 seconds
+        setTimeout(() => setCreatedPatientId(null), 5000);
       }
     } catch (error) {
       toast.error("Failed to confirm appointment");
       console.error(error);
     }
+  };
+
+  const copyPatientId = (patientId: string) => {
+    navigator.clipboard.writeText(patientId);
+    toast.success("Patient ID copied to clipboard!");
   };
 
   const getStatusColor = (status: string) => {
@@ -77,7 +91,6 @@ const AdminAppointments = () => {
     }
   };
 
-  // FIXED: Filter appointments into pending and confirmed
   const pendingAppointments = appointments.filter((apt: any) => apt.status === "pending");
   const confirmedAppointments = appointments.filter((apt: any) => apt.status === "confirmed");
 
@@ -97,6 +110,28 @@ const AdminAppointments = () => {
           <h1 className="text-2xl font-bold text-slate-900">Appointment Management</h1>
         </div>
       </div>
+
+      {/* Success Banner for Created Patient */}
+      {createdPatientId && (
+        <div className="bg-green-50 border-b-2 border-green-500 p-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <User size={24} className="text-green-600" />
+              <div>
+                <p className="font-semibold text-green-900">Patient Created Successfully!</p>
+                <p className="text-sm text-green-800">New Patient ID: <span className="font-mono font-bold">{createdPatientId}</span></p>
+              </div>
+            </div>
+            <button
+              onClick={() => copyPatientId(createdPatientId)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-all"
+            >
+              <Copy size={18} />
+              Copy ID
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -146,7 +181,7 @@ const AdminAppointments = () => {
                         <th className="px-6 py-3 text-left">Patient</th>
                         <th className="px-6 py-3 text-left">Department</th>
                         <th className="px-6 py-3 text-left">Date</th>
-                        <th className="px-6 py-3 text-left">Status</th>
+                        <th className="px-6 py-3 text-left">Patient ID</th>
                         <th className="px-6 py-3 text-left">Action</th>
                       </tr>
                     </thead>
@@ -162,13 +197,13 @@ const AdminAppointments = () => {
                             {new Date(apt.appointmentDate).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-3">
-                            <span
-                              className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                                apt.status
-                              )}`}
-                            >
-                              {apt.status}
-                            </span>
+                            {apt.patientId ? (
+                              <span className="font-mono text-blue-600 font-semibold">
+                                {apt.patientId?.patientId || "-"}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
                           </td>
                           <td className="px-6 py-3">
                             {apt.status === "pending" && (
@@ -200,7 +235,6 @@ const AdminAppointments = () => {
                     <p className="font-semibold">{selectedAppointment.patientName}</p>
                   </div>
 
-                  {/* FIXED: Added Phone Number Display */}
                   <div>
                     <p className="text-sm text-slate-600 flex items-center gap-2">
                       <Phone size={16} />
@@ -240,6 +274,12 @@ const AdminAppointments = () => {
                     </div>
                   )}
 
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <p className="text-xs text-blue-700">
+                      ℹ️ A new patient record will be created with this appointment when confirmed.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 mb-2">
                       Notes for Patient
@@ -259,7 +299,7 @@ const AdminAppointments = () => {
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                   >
                     <CheckCircle size={18} />
-                    Confirm
+                    Confirm & Create Patient
                   </button>
                   <button
                     onClick={() => {

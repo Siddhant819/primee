@@ -101,15 +101,61 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Confirm appointment (admin only)
+// ✅ FIXED: Confirm appointment - PROPERLY CREATE PATIENT WITH ALL REQUIRED FIELDS
 router.put('/:id/confirm', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { notes } = req.body;
     
-    const appointment = await Appointment.findByIdAndUpdate(
+    // First, fetch the appointment to get all details
+    const appointment = await Appointment.findById(req.params.id);
+    
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    let patientId = appointment.patientId;
+
+    // ✅ Create patient if one doesn't exist
+    if (!patientId) {
+      try {
+        // Check if patient with this email already exists
+        let patient = await Patient.findOne({ email: appointment.email });
+        
+        if (!patient) {
+          // ✅ FIXED: Include ALL REQUIRED fields for patient creation
+          patient = new Patient({
+            fullName: appointment.patientName,
+            email: appointment.email,
+            phone: appointment.phone,
+            dateOfBirth: new Date(), // ✅ FIX: Set to current date (required field)
+            gender: 'Other', // ✅ FIX: Default gender (required field)
+            address: '',
+            medicalHistory: `Confirmed appointment for ${appointment.department} on ${new Date(appointment.appointmentDate).toLocaleDateString()}. Reason: ${appointment.reason || 'General Checkup'}`,
+            bloodGroup: null,
+            userId: req.userId, // ✅ FIX: Use admin's ID (required field)
+            createdBy: req.userId, // ✅ FIX: Admin who created the patient
+          });
+          
+          await patient.save();
+          console.log('✅ New patient created with ID:', patient.patientId);
+        }
+        
+        patientId = patient._id;
+      } catch (patientError) {
+        console.error('❌ Error creating patient:', patientError);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to create patient: ${patientError.message}` 
+        });
+      }
+    }
+
+    // Update appointment with patient ID
+    const updatedAppointment = await Appointment.findByIdAndUpdate(
       req.params.id,
       {
         status: 'confirmed',
+        patientId: patientId,
         notes,
         confirmedBy: req.userId,
         confirmedAt: new Date()
@@ -118,6 +164,7 @@ router.put('/:id/confirm', authenticate, authorize(['admin']), async (req, res) 
     ).populate('patientId');
 
     // Send confirmation email to patient
+    const patientIDStr = updatedAppointment.patientId?.patientId || 'N/A';
     const emailContent = `
       <h2>Appointment Confirmed!</h2>
       <p>Dear ${appointment.patientName},</p>
@@ -127,16 +174,22 @@ router.put('/:id/confirm', authenticate, authorize(['admin']), async (req, res) 
         <li><strong>Department:</strong> ${appointment.department}</li>
         <li><strong>Date:</strong> ${new Date(appointment.appointmentDate).toLocaleDateString()}</li>
         <li><strong>Time:</strong> ${appointment.timeSlot}</li>
-        <li><strong>Notes:</strong> ${notes || 'None'}</li>
+        <li><strong>Your Patient ID:</strong> <strong>${patientIDStr}</strong></li>
+        ${notes ? `<li><strong>Notes:</strong> ${notes}</li>` : ''}
       </ul>
       <p>Please arrive 15 minutes before your appointment time.</p>
-      <p>Thank you!</p>
+      <p>Thank you for choosing Prime Hospital!</p>
     `;
 
     await sendEmail(appointment.email, 'Appointment Confirmed', emailContent);
 
-    res.json({ success: true, message: 'Appointment confirmed', appointment });
+    res.json({ 
+      success: true, 
+      message: `Appointment confirmed! Patient ID: ${patientIDStr}`, 
+      appointment: updatedAppointment 
+    });
   } catch (error) {
+    console.error('❌ Error confirming appointment:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
