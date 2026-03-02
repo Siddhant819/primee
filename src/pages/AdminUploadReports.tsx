@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, ArrowLeft, Trash2, Plus } from "lucide-react";
+import { Upload, ArrowLeft, Trash2, Plus, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/api/config";
 
@@ -9,9 +9,10 @@ const AdminUploadReports = () => {
   const [patients, setPatients] = useState([]);
   const [reports, setReports] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [createNewPatient, setCreateNewPatient] = useState(false);
-  const [searchPatientTerm, setSearchPatientTerm] = useState("");
+  const [filteredPatients, setFilteredPatients] = useState([]);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   
   const [formData, setFormData] = useState({
     patientId: "",
@@ -22,7 +23,7 @@ const AdminUploadReports = () => {
     patientGender: "",
     reportType: "X-Ray",
     department: "",
-    reportDate: "",
+    reportDate: new Date().toISOString().split('T')[0], // Auto set to today
     description: "",
     doctorName: "",
   });
@@ -69,58 +70,81 @@ const AdminUploadReports = () => {
     }
   };
 
-  const handlePatientChange = (patientId: string) => {
-    const selected = patients.find((p: any) => p._id === patientId);
-    if (selected) {
-      setFormData({
-        ...formData,
-        patientId: selected._id,
-        patientName: selected.fullName,
-        patientEmail: selected.email,
-        patientPhone: selected.phone,
-      });
-      setCreateNewPatient(false);
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle patient search
+  const handlePatientSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      patientName: value,
+    }));
+
+    if (value.trim().length > 0) {
+      const filtered = patients.filter((p: any) =>
+        p.patientId.toLowerCase().includes(value.toLowerCase()) ||
+        p.fullName.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredPatients(filtered);
+      setShowPatientDropdown(true);
+    } else {
+      setShowPatientDropdown(false);
     }
+  };
+
+  // Select patient from dropdown
+  const handleSelectPatient = (patient: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      patientId: patient._id,
+      patientName: patient.fullName,
+    }));
+    setShowPatientDropdown(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
       
-      // Validate file type
-      if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-        toast.error('Please select a valid image file (JPEG, PNG, or GIF)');
-        return;
-      }
+      const validFiles = files.filter(file => {
+        if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+          toast.error(`${file.name}: Invalid file type`);
+          return false;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name}: File too large (max 5MB)`);
+          return false;
+        }
+        return true;
+      });
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size must be less than 5MB');
-        return;
+      setSelectedFiles(validFiles);
+      if (validFiles.length > 0) {
+        toast.success(`${validFiles.length} file(s) selected`);
       }
-
-      setSelectedFile(file);
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const removeFile = (index: number) => {
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedFile) {
-      toast.error("Please select a report image");
+    if (selectedFiles.length === 0) {
+      toast.error("Please select at least one report image");
       return;
     }
 
-    // Validate based on mode
     if (createNewPatient) {
       if (!formData.patientName || !formData.patientEmail || !formData.patientPhone || 
           !formData.patientDateOfBirth || !formData.patientGender) {
@@ -128,14 +152,15 @@ const AdminUploadReports = () => {
         return;
       }
     } else {
-      if (!formData.patientId) {
+      if (!formData.patientId.trim()) {
         toast.error("Please select a patient");
         return;
       }
     }
 
-    if (!formData.reportType || !formData.department || !formData.reportDate || !formData.doctorName) {
-      toast.error("Please fill all report fields");
+    // Only require reportType - department, doctorName are optional now
+    if (!formData.reportType) {
+      toast.error("Please select a report type");
       return;
     }
 
@@ -145,6 +170,10 @@ const AdminUploadReports = () => {
       const token = localStorage.getItem("authToken");
       const formDataToSend = new FormData();
       
+      selectedFiles.forEach(file => {
+        formDataToSend.append('reportImages', file);
+      });
+
       if (createNewPatient) {
         formDataToSend.append("patientName", formData.patientName);
         formDataToSend.append("patientEmail", formData.patientEmail);
@@ -158,11 +187,10 @@ const AdminUploadReports = () => {
       }
 
       formDataToSend.append("reportType", formData.reportType);
-      formDataToSend.append("department", formData.department);
+      formDataToSend.append("department", formData.department || "General");
       formDataToSend.append("reportDate", formData.reportDate);
       formDataToSend.append("description", formData.description);
-      formDataToSend.append("doctorName", formData.doctorName);
-      formDataToSend.append("reportImage", selectedFile);
+      formDataToSend.append("doctorName", formData.doctorName || "Not Specified");
 
       const response = await fetch(`${API_BASE_URL}/reports/upload`, {
         method: "POST",
@@ -175,9 +203,8 @@ const AdminUploadReports = () => {
       const data = await response.json();
 
       if (data.success) {
-        const patientId = data.report?.patientId?.patientId || data.patientId || 'Unknown';
-        toast.success(`Report uploaded successfully! Patient ID: ${patientId}`);
-        setSelectedFile(null);
+        toast.success(`${selectedFiles.length} report(s) uploaded successfully!`);
+        setSelectedFiles([]);
         setFormData({
           patientId: "",
           patientName: "",
@@ -187,7 +214,7 @@ const AdminUploadReports = () => {
           patientGender: "",
           reportType: "X-Ray",
           department: "",
-          reportDate: "",
+          reportDate: new Date().toISOString().split('T')[0],
           description: "",
           doctorName: "",
         });
@@ -195,7 +222,7 @@ const AdminUploadReports = () => {
         fetchReports();
         fetchPatients();
       } else {
-        toast.error(data.message || "Failed to upload report");
+        toast.error(data.message || "Failed to upload reports");
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -218,21 +245,11 @@ const AdminUploadReports = () => {
       if (data.success) {
         fetchReports();
         toast.success("Report deleted successfully");
-      } else {
-        toast.error(data.message || "Failed to delete report");
       }
     } catch (error) {
       toast.error("Failed to delete report");
-      console.error(error);
     }
   };
-
-  // Filter patients based on search
-  const filteredPatients = patients.filter((p: any) =>
-    p.fullName.toLowerCase().includes(searchPatientTerm.toLowerCase()) ||
-    p.patientId.toLowerCase().includes(searchPatientTerm.toLowerCase()) ||
-    p.email.toLowerCase().includes(searchPatientTerm.toLowerCase())
-  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -254,150 +271,147 @@ const AdminUploadReports = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Upload Form */}
           <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">Upload New Report</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-6">Upload Report</h2>
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {/* Patient Selection Mode Toggle */}
+              {/* Mode Toggle */}
               <div className="flex gap-4 mb-6">
                 <button
                   type="button"
                   onClick={() => {
                     setCreateNewPatient(false);
-                    setFormData({ ...formData, patientId: "" });
+                    setFormData({ ...formData, patientId: "", patientName: "" });
+                    setShowPatientDropdown(false);
                   }}
                   className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
                     !createNewPatient
-                      ? "bg-slate-900 text-white"
+                      ? "bg-blue-600 text-white"
                       : "bg-slate-200 text-slate-900 hover:bg-slate-300"
                   }`}
                 >
-                  Select Existing Patient
+                  Existing Patient
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setCreateNewPatient(true);
-                    setFormData({ ...formData, patientId: "" });
+                    setFormData({ ...formData, patientId: "", patientName: "" });
+                    setShowPatientDropdown(false);
                   }}
                   className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
                     createNewPatient
-                      ? "bg-slate-900 text-white"
+                      ? "bg-blue-600 text-white"
                       : "bg-slate-200 text-slate-900 hover:bg-slate-300"
                   }`}
                 >
                   <Plus size={16} className="inline mr-2" />
-                  Create New Patient
+                  New Patient
                 </button>
               </div>
 
-              {/* Existing Patient Selection */}
+              {/* EXISTING PATIENT - SIMPLIFIED */}
               {!createNewPatient && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-2">
-                    Select Patient *
+                    Patient *
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Search by name, ID, or email..."
-                    value={searchPatientTerm}
-                    onChange={(e) => setSearchPatientTerm(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
-                  <select
-                    value={formData.patientId}
-                    onChange={(e) => handlePatientChange(e.target.value)}
-                    required={!createNewPatient}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  >
-                    <option value="">Choose a patient</option>
-                    {filteredPatients.map((patient: any) => (
-                      <option key={patient._id} value={patient._id}>
-                        {patient.patientId} - {patient.fullName}
-                      </option>
-                    ))}
-                  </select>
-                  {filteredPatients.length === 0 && searchPatientTerm && (
-                    <p className="text-sm text-red-600 mt-2">No patients found matching your search</p>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search by name or ID..."
+                      value={formData.patientName}
+                      onChange={handlePatientSearch}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoComplete="off"
+                    />
+                    
+                    {/* Patient Dropdown */}
+                    {showPatientDropdown && filteredPatients.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                        {filteredPatients.map((patient: any) => (
+                          <button
+                            key={patient._id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectPatient(patient);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-b-0"
+                          >
+                            <p className="font-semibold text-slate-900">{patient.patientId}</p>
+                            <p className="text-sm text-slate-600">{patient.fullName}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {formData.patientId && (
+                    <p className="text-xs text-green-600 mt-2">✓ Patient selected: {formData.patientName}</p>
                   )}
                 </div>
               )}
 
-              {/* New Patient Form */}
+              {/* NEW PATIENT - FULL FORM */}
               {createNewPatient && (
                 <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h3 className="font-semibold text-slate-900 mb-3">Patient Information</h3>
+                  <h3 className="font-semibold text-slate-900">Patient Details</h3>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Full Name *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Name *</label>
                     <input
                       type="text"
                       name="patientName"
                       value={formData.patientName}
-                      onChange={handleChange}
-                      required={createNewPatient}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                      placeholder="John Doe"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Full name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Email *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Email *</label>
                     <input
                       type="email"
                       name="patientEmail"
                       value={formData.patientEmail}
-                      onChange={handleChange}
-                      required={createNewPatient}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                      placeholder="john@example.com"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="email@example.com"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Phone *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Phone *</label>
                     <input
                       type="tel"
                       name="patientPhone"
                       value={formData.patientPhone}
-                      onChange={handleChange}
-                      required={createNewPatient}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="9841234567"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Date of Birth *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">DOB *</label>
                     <input
                       type="date"
                       name="patientDateOfBirth"
                       value={formData.patientDateOfBirth}
-                      onChange={handleChange}
-                      required={createNewPatient}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Gender *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Gender *</label>
                     <select
                       name="patientGender"
                       value={formData.patientGender}
-                      onChange={handleChange}
-                      required={createNewPatient}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Select gender</option>
+                      <option value="">Select</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Other">Other</option>
@@ -406,120 +420,124 @@ const AdminUploadReports = () => {
                 </div>
               )}
 
-              {/* Report Details */}
+              {/* REPORT TYPE - REQUIRED */}
               <div className="pt-4 border-t border-slate-200">
-                <h3 className="font-semibold text-slate-900 mb-4">Report Information</h3>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Report Type *
+                </label>
+                <select
+                  name="reportType"
+                  value={formData.reportType}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="X-Ray">X-Ray</option>
+                  <option value="CT Scan">CT Scan</option>
+                  <option value="Ultrasound">Ultrasound</option>
+                  <option value="Blood Test">Blood Test</option>
+                  <option value="MRI">MRI</option>
+                  <option value="ECG">ECG</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
 
-                <div className="space-y-4">
+              {/* OPTIONAL FIELDS - Hidden by default */}
+              <details className="cursor-pointer group">
+                <summary className="text-sm font-semibold text-slate-700 py-2 hover:text-slate-900">
+                  + Additional Details (Optional)
+                </summary>
+                <div className="space-y-4 mt-4 p-4 bg-slate-50 rounded-lg">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Report Type *
-                    </label>
-                    <select
-                      name="reportType"
-                      value={formData.reportType}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    >
-                      <option value="X-Ray">X-Ray</option>
-                      <option value="CT Scan">CT Scan</option>
-                      <option value="Ultrasound">Ultrasound</option>
-                      <option value="Blood Test">Blood Test</option>
-                      <option value="MRI">MRI</option>
-                      <option value="ECG">ECG</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Department *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Department</label>
                     <input
                       type="text"
                       name="department"
                       value={formData.department}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="e.g., Cardiology"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Report Date *
-                    </label>
-                    <input
-                      type="date"
-                      name="reportDate"
-                      value={formData.reportDate}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Doctor Name *
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Doctor Name</label>
                     <input
                       type="text"
                       name="doctorName"
                       value={formData.doctorName}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                      placeholder="Dr. John Doe"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Dr. Name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Description (Optional)
-                    </label>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">Notes</label>
                     <textarea
                       name="description"
                       value={formData.description}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                      placeholder="Add any additional notes..."
-                      rows={3}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Additional notes..."
+                      rows={2}
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Report Image (PNG/JPG) *
-                    </label>
-                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-slate-900 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        required
-                        className="hidden"
-                        id="file-input"
-                      />
-                      <label htmlFor="file-input" className="cursor-pointer block">
-                        <Upload size={32} className="mx-auto text-slate-400 mb-2" />
-                        <p className="text-sm text-slate-600">
-                          {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
-                        </p>
-                      </label>
-                    </div>
-                  </div>
                 </div>
+              </details>
+
+              {/* REPORT DATE - AUTO SET */}
+              <input
+                type="hidden"
+                name="reportDate"
+                value={formData.reportDate}
+              />
+
+              {/* FILE UPLOAD */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Report Images *
+                </label>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="file-input"
+                  />
+                  <label htmlFor="file-input" className="cursor-pointer block">
+                    <Upload size={32} className="mx-auto text-slate-400 mb-2" />
+                    <p className="text-sm text-slate-600">Click or drag images here</p>
+                  </label>
+                </div>
+
+                {/* Selected Files */}
+                {selectedFiles.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold text-slate-900">Selected: {selectedFiles.length}</p>
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-green-50 p-3 rounded border border-green-200">
+                        <p className="text-sm text-green-900">{file.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
                 disabled={reportLoading}
-                className="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition-all disabled:opacity-50"
+                className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {reportLoading ? "Uploading..." : "Upload Report"}
+                {reportLoading ? `Uploading ${selectedFiles.length}...` : `Upload ${selectedFiles.length || 0} Report(s)`}
               </button>
             </form>
           </div>
@@ -527,28 +545,23 @@ const AdminUploadReports = () => {
           {/* Reports List */}
           <div className="bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-xl font-bold text-slate-900 mb-6">Recent Reports ({reports.length})</h2>
-            <div className="max-h-96 overflow-y-auto space-y-4">
+            <div className="max-h-[600px] overflow-y-auto space-y-3">
               {reports.length === 0 ? (
-                <p className="text-center text-slate-600">No reports uploaded yet</p>
+                <p className="text-center text-slate-600">No reports yet</p>
               ) : (
-                reports.slice(0, 10).map((report: any) => (
-                  <div key={report._id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-all">
-                    <div className="flex justify-between items-start mb-2">
+                reports.slice(0, 15).map((report: any) => (
+                  <div key={report._id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50">
+                    <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <p className="font-semibold text-slate-900">{report.reportType}</p>
-                        <p className="text-sm text-slate-600">{report.patientName}</p>
-                        <p className="text-xs text-blue-600 font-semibold">
-                          ID: {report.patientId?.patientId || 'N/A'}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {new Date(report.reportDate).toLocaleDateString()}
-                        </p>
+                        <p className="text-xs text-slate-600">{report.patientName}</p>
+                        <p className="text-xs text-blue-600">{report.patientId?.patientId}</p>
                       </div>
                       <button
                         onClick={() => deleteReport(report._id)}
-                        className="text-slate-400 hover:text-red-600 transition-colors"
+                        className="text-slate-400 hover:text-red-600"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>

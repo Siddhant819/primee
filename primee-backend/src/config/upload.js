@@ -6,35 +6,25 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Get the absolute path to uploads directory
-// Current file: primee-backend/src/config/upload.js
-// Go up 2 levels: primee-backend/
-// Then add uploads/reports
 const uploadsDir = path.resolve(__dirname, '../../uploads');
 const reportsDir = path.resolve(__dirname, '../../uploads/reports');
 
 console.log('\n🔍 DEBUG PATH RESOLUTION:');
-console.log('__dirname:', __dirname);
-console.log('uploadsDir:', uploadsDir);
 console.log('reportsDir:', reportsDir);
-console.log('');
 
 // Ensure directories exist
 const ensureDirectories = () => {
   try {
-    // Create uploads directory
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
       console.log('✅ Created:', uploadsDir);
     }
     
-    // Create reports subdirectory
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
       console.log('✅ Created:', reportsDir);
     }
     
-    // Verify write access
     fs.accessSync(reportsDir, fs.constants.W_OK);
     console.log('✅ Directory is writable');
     
@@ -45,13 +35,11 @@ const ensureDirectories = () => {
   }
 };
 
-// Ensure directories exist when module loads
 ensureDirectories();
 
 // Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Ensure directory exists before each upload
     try {
       if (!fs.existsSync(reportsDir)) {
         fs.mkdirSync(reportsDir, { recursive: true });
@@ -93,11 +81,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Create multer instance
+// Create multer instance - SUPPORT MULTIPLE FILES
 export const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
 });
 
-console.log('✅ Multer configured\n');
+console.log('✅ Multer configured for multiple files\n');

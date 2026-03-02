@@ -21,18 +21,44 @@ router.get('/', authenticate, authorize(['admin']), async (req, res) => {
   }
 });
 
-// Get reports by patient ID (authenticated users)
+// Get reports by patient ID (authenticated users) - FIXED
 router.get('/patient/:patientId', authenticate, async (req, res) => {
   try {
-    const reports = await Report.find({ patientId: req.params.patientId })
+    const patientIdParam = req.params.patientId;
+    let mongoDbId = patientIdParam;
+
+    console.log('Searching for patient:', patientIdParam);
+
+    // If the param looks like PT00001 (patientId format), find the MongoDB _id first
+    if (patientIdParam.match(/^PT\d+$/i)) {
+      console.log('Converting PT format to MongoDB ID');
+      const patient = await Patient.findOne({ patientId: patientIdParam.toUpperCase() });
+      
+      if (!patient) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `Patient with ID ${patientIdParam} not found` 
+        });
+      }
+      
+      mongoDbId = patient._id.toString();
+      console.log('Found MongoDB ID:', mongoDbId);
+    }
+
+    // Now search reports using the MongoDB ID
+    const reports = await Report.find({ patientId: mongoDbId })
       .populate('patientId', 'patientId fullName')
       .populate('uploadedBy', 'name')
       .sort({ createdAt: -1 });
 
     if (!reports || reports.length === 0) {
-      return res.status(404).json({ success: false, message: 'No reports found' });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No reports found for this patient' 
+      });
     }
 
+    console.log(`Found ${reports.length} report(s) for patient ${patientIdParam}`);
     res.json({ success: true, reports });
   } catch (error) {
     console.error('Error fetching reports:', error);
@@ -58,18 +84,17 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Upload report with patient creation option (admin only)
-router.post('/upload', authenticate, authorize(['admin']), upload.single('reportImage'), async (req, res) => {
-  let uploadedFile = null;
+// Upload report with MULTIPLE images (admin only)
+router.post('/upload', authenticate, authorize(['admin']), upload.array('reportImages', 10), async (req, res) => {
+  let uploadedFiles = [];
   
   try {
-    // Validate file upload
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No image file provided' });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No image files provided' });
     }
 
-    uploadedFile = req.file;
-    console.log('File uploaded:', uploadedFile.filename);
+    uploadedFiles = req.files;
+    console.log('Files uploaded:', uploadedFiles.length);
 
     const { 
       patientId, 
@@ -86,7 +111,6 @@ router.post('/upload', authenticate, authorize(['admin']), upload.single('report
       doctorName 
     } = req.body;
 
-    // Validate required report fields
     if (!reportType || !department || !reportDate || !doctorName) {
       return res.status(400).json({ 
         success: false, 
@@ -108,33 +132,30 @@ router.post('/upload', authenticate, authorize(['admin']), upload.single('report
         finalPatientName = existingPatient.fullName;
       } catch (err) {
         console.error('Error finding patient:', err);
-        return res.status(500).json({ success: false, message: 'Error finding patient: ' + err.message });
+        return res.status(500).json({ success: false, message: 'Error finding patient' });
       }
     }
 
     // CASE 2: Creating new patient
     else if (createNewPatient === 'true') {
-      // Validate patient details
       if (!patientName || !patientEmail || !patientPhone || !patientDateOfBirth || !patientGender) {
         return res.status(400).json({ 
           success: false, 
-          message: 'Missing patient details. Required: patientName, patientEmail, patientPhone, patientDateOfBirth, patientGender' 
+          message: 'Missing patient details' 
         });
       }
 
       try {
-        // Check if email already exists
         const existingByEmail = await Patient.findOne({ 
           email: patientEmail.toLowerCase().trim() 
         });
         if (existingByEmail) {
           return res.status(400).json({
             success: false,
-            message: 'Email already registered. Please use a different email.'
+            message: 'Email already registered'
           });
         }
 
-        // Create patient object
         const newPatient = new Patient({
           fullName: patientName.trim(),
           email: patientEmail.toLowerCase().trim(),
@@ -145,9 +166,8 @@ router.post('/upload', authenticate, authorize(['admin']), upload.single('report
           createdBy: req.userId
         });
 
-        // Save patient
         await newPatient.save();
-        console.log('Patient created with ID:', newPatient.patientId, 'MongoDB ID:', newPatient._id);
+        console.log('Patient created:', newPatient.patientId);
 
         finalPatientId = newPatient._id;
         finalPatientName = newPatient.fullName;
@@ -155,74 +175,71 @@ router.post('/upload', authenticate, authorize(['admin']), upload.single('report
         console.error('Error creating patient:', err);
         return res.status(500).json({ 
           success: false, 
-          message: 'Error creating patient: ' + err.message,
-          details: err.errors ? Object.keys(err.errors).map(key => `${key}: ${err.errors[key].message}`) : []
+          message: 'Error creating patient: ' + err.message
         });
       }
     }
 
-    // Validate we have a patient
     if (!finalPatientId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Please select an existing patient or provide new patient details' 
+        message: 'Please select an existing patient or create a new one' 
       });
     }
 
-    // Create report
+    // Create reports for each uploaded image
     try {
-      console.log('Creating report for patient:', finalPatientId);
-      
-      // Store the file path relative to the uploads directory
-      const reportImageUrl = `/uploads/reports/${uploadedFile.filename}`;
-      console.log('Report image URL:', reportImageUrl);
+      const savedReports = [];
 
-      const newReport = new Report({
-        patientId: finalPatientId,
-        patientName: finalPatientName,
-        reportType: reportType.trim(),
-        department: department.trim(),
-        reportDate: new Date(reportDate),
-        reportImageUrl: reportImageUrl,
-        description: description?.trim() || null,
-        doctorName: doctorName.trim(),
-        uploadedBy: req.userId
-      });
+      for (const file of uploadedFiles) {
+        const reportImageUrl = `/uploads/reports/${file.filename}`;
 
-      await newReport.save();
-      console.log('Report saved successfully');
+        const newReport = new Report({
+          patientId: finalPatientId,
+          patientName: finalPatientName,
+          reportType: reportType.trim(),
+          department: department.trim(),
+          reportDate: new Date(reportDate),
+          reportImageUrl: reportImageUrl,
+          description: description?.trim() || null,
+          doctorName: doctorName.trim(),
+          uploadedBy: req.userId
+        });
 
-      // Populate references
-      await newReport.populate('patientId', 'patientId fullName');
-      await newReport.populate('uploadedBy', 'name');
+        await newReport.save();
+        await newReport.populate('patientId', 'patientId fullName');
+        await newReport.populate('uploadedBy', 'name');
+        
+        savedReports.push(newReport);
+      }
+
+      console.log('All reports saved successfully');
 
       return res.status(201).json({
         success: true,
-        message: 'Report uploaded successfully',
-        report: newReport,
+        message: `${savedReports.length} report(s) uploaded successfully`,
+        reports: savedReports,
         patientId: finalPatientId,
         patientName: finalPatientName
       });
     } catch (err) {
-      console.error('Error saving report:', err);
+      console.error('Error saving reports:', err);
       return res.status(500).json({ 
         success: false, 
-        message: 'Error saving report: ' + err.message,
-        details: err.errors ? Object.keys(err.errors).map(key => `${key}: ${err.errors[key].message}`) : []
+        message: 'Error saving reports: ' + err.message
       });
     }
 
   } catch (error) {
-    console.error('=== UPLOAD ERROR ===', error);
+    console.error('Upload error:', error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Server error: ' + error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: 'Server error: ' + error.message
     });
   }
 });
 
-// Update report (admin only)
+// Update report
 router.put('/:id', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { description, doctorName } = req.body;
@@ -244,7 +261,7 @@ router.put('/:id', authenticate, authorize(['admin']), async (req, res) => {
   }
 });
 
-// Delete report (admin only)
+// Delete report
 router.delete('/:id', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const report = await Report.findByIdAndDelete(req.params.id);
