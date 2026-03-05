@@ -13,7 +13,9 @@ import productRoutes from './routes/products.js';
 import patientRoutes from './routes/patients.js';
 import appointmentRoutes from './routes/appointments.js';
 import messageRoutes from './routes/messages.js';
+import messageRoutes from './routes/messages.js';
 import reportRoutes from './routes/reports.js';
+import mongoSanitize from 'express-mongo-sanitize';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +44,8 @@ app.use(cors({
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Global rate limiter — 500 requests per 15 minutes per IP
@@ -62,8 +66,6 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Too many authentication attempts, please try again later.' },
 });
-
-import mongoSanitize from 'express-mongo-sanitize';
 
 // ── Body Parsing ─────────────────────────────────────────────────────
 
