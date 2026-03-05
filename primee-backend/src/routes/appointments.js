@@ -3,6 +3,8 @@ import Appointment from '../models/Appointment.js';
 import Patient from '../models/Patient.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { sendEmail } from '../config/email.js';
+import { sanitizeHtml } from '../utils/sanitize.js';
+import { body, validationResult } from 'express-validator';
 
 const router = express.Router();
 
@@ -12,10 +14,10 @@ router.get('/', authenticate, authorize(['admin']), async (req, res) => {
     const appointments = await Appointment.find()
       .populate('patientId')
       .populate('confirmedBy', 'name');
-    
+
     res.json({ success: true, appointments });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -24,67 +26,86 @@ router.get('/user/me', authenticate, async (req, res) => {
   try {
     const appointments = await Appointment.find({ patientId: req.userId })
       .populate('patientId');
-    
+
     res.json({ success: true, appointments });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Get appointment by ID
-router.get('/:id', authenticate, async (req, res) => {
+// Get appointment by ID (authenticated — admin or owner)
+router.get('/:id', authenticate, authorize(['admin', 'user']), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id)
       .populate('patientId')
       .populate('confirmedBy', 'name');
-    
+
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
     }
 
+    // Non-admin users can only view their own appointments
+    if (req.userRole !== 'admin' && appointment.patientId?.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
     res.json({ success: true, appointment });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Create appointment
-router.post('/', async (req, res) => {
+// Create appointment (public, but with sanitized inputs)
+router.post('/', [
+  body('patientName').trim().notEmpty().withMessage('Name is required'),
+  body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('phone').trim().notEmpty().withMessage('Phone number is required'),
+  body('department').trim().notEmpty().withMessage('Department is required'),
+  body('appointmentDate').isISO8601().withMessage('Valid date is required'),
+  body('timeSlot').trim().notEmpty().withMessage('Time slot is required'),
+  body('reason').optional().trim()
+], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array(), message: errors.array()[0].msg });
+    }
+
     const { patientName, email, phone, department, appointmentDate, timeSlot, reason } = req.body;
 
-    if (!patientName || !email || !phone || !department || !appointmentDate || !timeSlot) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide all required fields' 
-      });
-    }
+
 
     const appointment = new Appointment({
       patientId: null,
-      patientName,
-      email,
-      phone,
-      department,
+      patientName: patientName.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone.trim(),
+      department: department.trim(),
       appointmentDate,
-      timeSlot,
-      reason,
+      timeSlot: timeSlot.trim(),
+      reason: reason?.trim() || '',
       status: 'pending'
     });
 
     await appointment.save();
 
-    // Send confirmation email
+    // Sanitize all user-supplied values before injecting into HTML email
+    const safeName = sanitizeHtml(patientName);
+    const safeDept = sanitizeHtml(department);
+    const safeReason = sanitizeHtml(reason || 'General Checkup');
+    const safeDate = sanitizeHtml(new Date(appointmentDate).toLocaleDateString());
+    const safeTime = sanitizeHtml(timeSlot);
+
     const emailContent = `
       <h2>Appointment Confirmation</h2>
-      <p>Dear ${patientName},</p>
+      <p>Dear ${safeName},</p>
       <p>Your appointment request has been received. We will contact you shortly to confirm.</p>
       <h3>Appointment Details:</h3>
       <ul>
-        <li><strong>Department:</strong> ${department}</li>
-        <li><strong>Date:</strong> ${new Date(appointmentDate).toLocaleDateString()}</li>
-        <li><strong>Time:</strong> ${timeSlot}</li>
-        <li><strong>Reason:</strong> ${reason || 'General Checkup'}</li>
+        <li><strong>Department:</strong> ${safeDept}</li>
+        <li><strong>Date:</strong> ${safeDate}</li>
+        <li><strong>Time:</strong> ${safeTime}</li>
+        <li><strong>Reason:</strong> ${safeReason}</li>
       </ul>
       <p>Thank you for choosing Prime Hospital!</p>
     `;
@@ -97,85 +118,78 @@ router.post('/', async (req, res) => {
       appointment
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// ✅ FIXED: Confirm appointment - PROPERLY CREATE PATIENT WITH ALL REQUIRED FIELDS
+// Confirm appointment (admin only)
 router.put('/:id/confirm', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { notes } = req.body;
-    
-    // First, fetch the appointment to get all details
+
     const appointment = await Appointment.findById(req.params.id);
-    
+
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
     }
 
     let patientId = appointment.patientId;
 
-    // ✅ Create patient if one doesn't exist
+    // Create patient if one doesn't exist
     if (!patientId) {
-      try {
-        // Check if patient with this email already exists
-        let patient = await Patient.findOne({ email: appointment.email });
-        
-        if (!patient) {
-          // ✅ FIXED: Include ALL REQUIRED fields for patient creation
-          patient = new Patient({
-            fullName: appointment.patientName,
-            email: appointment.email,
-            phone: appointment.phone,
-            dateOfBirth: new Date(), // ✅ FIX: Set to current date (required field)
-            gender: 'Other', // ✅ FIX: Default gender (required field)
-            address: '',
-            medicalHistory: `Confirmed appointment for ${appointment.department} on ${new Date(appointment.appointmentDate).toLocaleDateString()}. Reason: ${appointment.reason || 'General Checkup'}`,
-            bloodGroup: null,
-            userId: req.userId, // ✅ FIX: Use admin's ID (required field)
-            createdBy: req.userId, // ✅ FIX: Admin who created the patient
-          });
-          
-          await patient.save();
-          console.log('✅ New patient created with ID:', patient.patientId);
-        }
-        
-        patientId = patient._id;
-      } catch (patientError) {
-        console.error('❌ Error creating patient:', patientError);
-        return res.status(400).json({ 
-          success: false, 
-          message: `Failed to create patient: ${patientError.message}` 
+      let patient = await Patient.findOne({ email: appointment.email });
+
+      if (!patient) {
+        patient = new Patient({
+          fullName: appointment.patientName,
+          email: appointment.email,
+          phone: appointment.phone,
+          dateOfBirth: new Date(),
+          gender: 'Other',
+          address: '',
+          medicalHistory: '',
+          bloodGroup: null,
+          userId: req.userId,
+          createdBy: req.userId,
         });
+
+        await patient.save();
       }
+
+      patientId = patient._id;
     }
 
-    // Update appointment with patient ID
     const updatedAppointment = await Appointment.findByIdAndUpdate(
       req.params.id,
       {
         status: 'confirmed',
         patientId: patientId,
-        notes,
+        notes: notes?.trim() || '',
         confirmedBy: req.userId,
         confirmedAt: new Date()
       },
       { new: true }
     ).populate('patientId');
 
-    // Send confirmation email to patient
-    const patientIDStr = updatedAppointment.patientId?.patientId || 'N/A';
+    // Send sanitized confirmation email
+    const patientIDStr = sanitizeHtml(updatedAppointment.patientId?.patientId || 'N/A');
+    const safeName = sanitizeHtml(appointment.patientName);
+    const safeDept = sanitizeHtml(appointment.department);
+    const safeDate = sanitizeHtml(new Date(appointment.appointmentDate).toLocaleDateString());
+    const safeTime = sanitizeHtml(appointment.timeSlot);
+    const safeNotes = notes ? sanitizeHtml(notes) : '';
+
     const emailContent = `
       <h2>Appointment Confirmed!</h2>
-      <p>Dear ${appointment.patientName},</p>
+      <p>Dear ${safeName},</p>
       <p>Your appointment has been confirmed by Prime Hospital.</p>
       <h3>Confirmed Appointment Details:</h3>
       <ul>
-        <li><strong>Department:</strong> ${appointment.department}</li>
-        <li><strong>Date:</strong> ${new Date(appointment.appointmentDate).toLocaleDateString()}</li>
-        <li><strong>Time:</strong> ${appointment.timeSlot}</li>
+        <li><strong>Department:</strong> ${safeDept}</li>
+        <li><strong>Date:</strong> ${safeDate}</li>
+        <li><strong>Time:</strong> ${safeTime}</li>
         <li><strong>Your Patient ID:</strong> <strong>${patientIDStr}</strong></li>
-        ${notes ? `<li><strong>Notes:</strong> ${notes}</li>` : ''}
+        ${safeNotes ? `<li><strong>Notes:</strong> ${safeNotes}</li>` : ''}
       </ul>
       <p>Please arrive 15 minutes before your appointment time.</p>
       <p>Thank you for choosing Prime Hospital!</p>
@@ -183,24 +197,28 @@ router.put('/:id/confirm', authenticate, authorize(['admin']), async (req, res) 
 
     await sendEmail(appointment.email, 'Appointment Confirmed', emailContent);
 
-    res.json({ 
-      success: true, 
-      message: `Appointment confirmed! Patient ID: ${patientIDStr}`, 
-      appointment: updatedAppointment 
+    res.json({
+      success: true,
+      message: `Appointment confirmed! Patient ID: ${updatedAppointment.patientId?.patientId || 'N/A'}`,
+      appointment: updatedAppointment
     });
   } catch (error) {
-    console.error('❌ Error confirming appointment:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Cancel appointment
-router.put('/:id/cancel', authenticate, async (req, res) => {
+// Cancel appointment (authenticated — admin or own appointment only)
+router.put('/:id/cancel', authenticate, authorize(['admin', 'user']), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
-    
+
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    // Non-admin users can only cancel their own appointments
+    if (req.userRole !== 'admin' && appointment.patientId?.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
     await Appointment.findByIdAndUpdate(
@@ -211,7 +229,7 @@ router.put('/:id/cancel', authenticate, async (req, res) => {
 
     res.json({ success: true, message: 'Appointment cancelled' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

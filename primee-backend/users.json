@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "69a4224ea6ee8d55740c0f41",
+    "name": "Sidd",
+    "email": "admin@example.com",
+    "role": "admin"
+  },
+  {
+    "_id": "69a42ca048be387be0cd7a24",
+    "name": "shashank",
+    "email": "shashank@gmail.com",
+    "role": "admin"
+  }
+]

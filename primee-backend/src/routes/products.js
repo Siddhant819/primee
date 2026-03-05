@@ -1,16 +1,20 @@
 import express from 'express';
 import Product from '../models/Product.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
+import { pickFields } from '../utils/sanitize.js';
 
 const router = express.Router();
 
-// Get all products
+// Allowed fields for product creation and updates
+const PRODUCT_FIELDS = ['name', 'description', 'price', 'category', 'image', 'stock', 'isActive'];
+
+// Get all products (public)
 router.get('/', async (req, res) => {
   try {
     const { category, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
-    
+
     let query = { isActive: true };
-    
+
     if (category) query.category = category;
     if (minPrice || maxPrice) {
       query.price = {};
@@ -36,11 +40,11 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Get product by ID
+// Get product by ID (public)
 router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('createdBy', 'name email');
@@ -49,27 +53,27 @@ router.get('/:id', async (req, res) => {
     }
     res.json({ success: true, product });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Create product
-router.post('/', authenticate, async (req, res) => {
+// Create product (admin only)
+router.post('/', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { name, description, price, category, image, stock } = req.body;
 
     if (!name || !description || !price || !category) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide all required fields' 
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
       });
     }
 
     const product = new Product({
-      name,
-      description,
+      name: name.trim(),
+      description: description.trim(),
       price,
-      category,
+      category: category.trim(),
       image,
       stock,
       createdBy: req.userId
@@ -84,53 +88,48 @@ router.post('/', authenticate, async (req, res) => {
       product
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Update product
-router.put('/:id', authenticate, async (req, res) => {
+// Update product (admin only — whitelisted fields)
+router.put('/:id', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    if (product.createdBy.toString() !== req.userId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
+    // Only allow whitelisted fields — prevents mass assignment
+    const updateData = pickFields(req.body, PRODUCT_FIELDS);
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     ).populate('createdBy', 'name email');
 
     res.json({ success: true, message: 'Product updated', product: updatedProduct });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Delete product
-router.delete('/:id', authenticate, async (req, res) => {
+// Delete product (admin only)
+router.delete('/:id', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
-    }
-
-    if (product.createdBy.toString() !== req.userId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
     await Product.findByIdAndDelete(req.params.id);
 
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

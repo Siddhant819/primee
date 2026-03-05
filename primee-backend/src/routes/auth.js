@@ -39,7 +39,7 @@ router.post(
 
       // Create JWT token
       const payload = { userId: user._id };
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
       res.status(201).json({
         success: true,
@@ -87,7 +87,7 @@ router.post(
 
       // Create JWT token
       const payload = { userId: user._id };
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
       res.json({
         success: true,

@@ -52,6 +52,12 @@
 
     --font-display: 'Playfair Display', serif;
     --font-body: 'DM Sans', sans-serif;
+
+    /* Premium Medical Gradients */
+    --medical-gradient-light: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    --medical-gradient-primary: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+    --medical-glass: rgba(255, 255, 255, 0.7);
+    --medical-glass-border: rgba(255, 255, 255, 0.125);
   }
 
   .dark {
@@ -101,5 +107,36 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Premium Glassmorphism Utility */
+  .glass-morphism {
+    @apply backdrop-blur-xl bg-white/70 border border-white/20 shadow-xl;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-md bg-white/40 border border-white/30 shadow-lg rounded-2xl transition-all duration-300;
+  }
+
+  .dark .glass-card {
+    @apply bg-slate-900/40 border-white/10;
+  }
+
+  .medical-gradient {
+    background: var(--medical-gradient-primary);
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(13,148,136,0.3)] hover:border-teal-400/50;
+  }
+
+  .floating {
+    animation: floating 3s ease-in-out infinite;
+  }
+
+  @keyframes floating {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
   }
 }

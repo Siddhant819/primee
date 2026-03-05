@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -20,101 +22,83 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ── Security Middleware ──────────────────────────────────────────────
 
-// Get absolute path to uploads
-// Current file: primee-backend/src/index.js
-// Go up 1 level: primee-backend/
-// Then add uploads
-const uploadsPath = path.resolve(__dirname, '../uploads');
+// Helmet sets various HTTP security headers (XSS filter, noSniff, etc.)
+app.use(helmet());
 
-console.log('\n╔════════════════════════════════════════╗');
-console.log('║       SERVER CONFIGURATION             ║');
-console.log('╚════════════════════════════════════════╝');
-console.log('__dirname:', __dirname);
-console.log('uploadsPath:', uploadsPath);
-console.log('uploads exists:', fs.existsSync(uploadsPath));
-console.log('reports exists:', fs.existsSync(path.join(uploadsPath, 'reports')));
+// CORS — only allow requests from the configured frontend origin
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim());
 
-// List files in reports directory
-if (fs.existsSync(path.join(uploadsPath, 'reports'))) {
-  const files = fs.readdirSync(path.join(uploadsPath, 'reports'));
-  console.log(`files in reports: ${files.length} total`);
-  if (files.length > 0) {
-    console.log('Sample files:', files.slice(0, 3));
-  }
-}
-console.log('╚════════════════════════════════════════╝\n');
-
-// Serve static files from uploads directory
-app.use('/uploads', express.static(uploadsPath, {
-  dotfiles: 'allow',
-  etag: false,
-  setHeaders: (res, path) => {
-    res.setHeader('Cache-Control', 'no-cache');
-    console.log('📤 Serving:', path);
-  }
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
 }));
 
-// Test endpoint to verify file serving
-app.get('/api/uploads-status', (req, res) => {
-  const reportsPath = path.join(uploadsPath, 'reports');
-  
-  try {
-    const reportsExist = fs.existsSync(reportsPath);
-    let files = [];
-    
-    if (reportsExist) {
-      files = fs.readdirSync(reportsPath).map(file => {
-        const filePath = path.join(reportsPath, file);
-        const stats = fs.statSync(filePath);
-        return {
-          name: file,
-          size: stats.size,
-          created: stats.birthtime
-        };
-      });
-    }
-    
-    return res.json({
-      uploadsPath,
-      uploadsExist: fs.existsSync(uploadsPath),
-      reportsPath,
-      reportsExist,
-      totalFiles: files.length,
-      files: files.slice(0, 10),
-      sampleUrl: files.length > 0 ? `/uploads/reports/${files[0].name}` : null
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: error.message,
-      uploadsPath,
-      reportsPath
-    });
-  }
+// Global rate limiter — 500 requests per 15 minutes per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+});
+app.use(globalLimiter);
+
+// Stricter rate limiter for auth routes — 20 requests per 15 minutes
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
 });
 
-// Test file endpoint
-app.get('/uploads/test.html', (req, res) => {
-  res.send(`
-    <html>
-      <body>
-        <h1>Upload Test</h1>
-        <p>If you see this, the /uploads route is working!</p>
-        <p>Try accessing: <a href="/api/uploads-status">/api/uploads-status</a></p>
-      </body>
-    </html>
-  `);
-});
+import mongoSanitize from 'express-mongo-sanitize';
 
-// Connect to MongoDB
+// ── Body Parsing ─────────────────────────────────────────────────────
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Sanitize data against NoSQL query injection
+app.use(mongoSanitize());
+
+// ── Static Files ─────────────────────────────────────────────────────
+
+const uploadsPath = path.resolve(__dirname, '../uploads');
+
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+}
+
+// Serve uploaded files — dotfiles denied, caching disabled for freshness
+app.use('/uploads', express.static(uploadsPath, {
+  dotfiles: 'deny',
+  etag: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  },
+}));
+
+// ── Database ─────────────────────────────────────────────────────────
+
 connectDB();
 
-// Routes
-app.use('/api/auth', authRoutes);
+// ── Routes ───────────────────────────────────────────────────────────
+
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/patients', patientRoutes);
@@ -122,31 +106,30 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reports', reportRoutes);
 
-// Health check
+// Health check (safe to leave public)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'Server is running' });
+  res.json({ status: 'ok' });
 });
 
-// 404 handler
+// ── Error Handlers ───────────────────────────────────────────────────
+
+// 404
 app.use((req, res) => {
-  console.log('⚠️  404 Not Found:', req.method, req.path);
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Error handler
+// Global error handler — never leak internals in production
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.message);
-  res.status(500).json({
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
     success: false,
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
   });
 });
 
+// ── Start ────────────────────────────────────────────────────────────
+
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`\n✅ Server running on http://localhost:${PORT}`);
-  console.log(`📁 Static files: http://localhost:${PORT}/uploads`);
-  console.log(`📊 Status check: http://localhost:${PORT}/api/uploads-status`);
-  console.log(`🧪 Test: http://localhost:${PORT}/uploads/test.html\n`);
+  console.log(`Server running on port ${PORT}`);
 });

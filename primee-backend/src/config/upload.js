@@ -9,33 +9,55 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.resolve(__dirname, '../../uploads');
 const reportsDir = path.resolve(__dirname, '../../uploads/reports');
 
-console.log('\n🔍 DEBUG PATH RESOLUTION:');
-console.log('reportsDir:', reportsDir);
-
 // Ensure directories exist
 const ensureDirectories = () => {
   try {
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
-      console.log('✅ Created:', uploadsDir);
     }
-    
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
-      console.log('✅ Created:', reportsDir);
     }
-    
-    fs.accessSync(reportsDir, fs.constants.W_OK);
-    console.log('✅ Directory is writable');
-    
     return true;
   } catch (error) {
-    console.error('❌ Directory error:', error.message);
+    console.error('Upload directory initialization failed');
     return false;
   }
 };
 
 ensureDirectories();
+
+// Magic byte signatures for allowed image types
+const MAGIC_BYTES = {
+  'image/jpeg': [Buffer.from([0xFF, 0xD8, 0xFF])],
+  'image/png': [Buffer.from([0x89, 0x50, 0x4E, 0x47])],
+  'image/gif': [Buffer.from([0x47, 0x49, 0x46, 0x38])],
+};
+
+/**
+ * Validate that the file content matches the declared MIME type
+ * by checking magic bytes (file signatures).
+ */
+const validateMagicBytes = (filePath, declaredMime) => {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buffer = Buffer.alloc(8);
+    fs.readSync(fd, buffer, 0, 8, 0);
+    fs.closeSync(fd);
+
+    const signatures = MAGIC_BYTES[declaredMime];
+    if (!signatures) return false;
+
+    return signatures.some(sig => {
+      for (let i = 0; i < sig.length; i++) {
+        if (buffer[i] !== sig[i]) return false;
+      }
+      return true;
+    });
+  } catch {
+    return false;
+  }
+};
 
 // Configure storage
 const storage = multer.diskStorage({
@@ -44,48 +66,77 @@ const storage = multer.diskStorage({
       if (!fs.existsSync(reportsDir)) {
         fs.mkdirSync(reportsDir, { recursive: true });
       }
-      console.log('📂 Saving file to:', reportsDir);
       cb(null, reportsDir);
     } catch (error) {
-      console.error('❌ Destination error:', error);
-      cb(error);
+      cb(new Error('Upload destination error'));
     }
   },
   filename: (req, file, cb) => {
     try {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname);
-      const fileName = uniqueSuffix + ext;
-      console.log('📝 Generated filename:', fileName);
-      cb(null, fileName);
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, uniqueSuffix + ext);
     } catch (error) {
-      console.error('❌ Filename error:', error);
-      cb(error);
+      cb(new Error('Filename generation error'));
     }
   }
 });
 
-// File filter
+// File filter — check MIME type AND file extension
+const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+const allowedExts = ['.jpg', '.jpeg', '.png', '.gif'];
+
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
   const ext = path.extname(file.originalname).toLowerCase();
-  
-  console.log('🔍 Checking file:', file.originalname, 'MIME:', file.mimetype);
-  
-  if (allowedMimes.includes(file.mimetype)) {
-    console.log('✅ File accepted');
-    cb(null, true);
-  } else {
-    console.log('❌ File rejected - invalid type');
-    cb(new Error('Only image files are allowed'));
+
+  if (!allowedMimes.includes(file.mimetype)) {
+    return cb(new Error('Only image files (JPEG, PNG, GIF) are allowed'));
   }
+
+  if (!allowedExts.includes(ext)) {
+    return cb(new Error('Invalid file extension'));
+  }
+
+  cb(null, true);
 };
 
-// Create multer instance - SUPPORT MULTIPLE FILES
-export const upload = multer({
+// Create multer instance
+const multerUpload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB per file (reduced from 10MB)
 });
 
-console.log('✅ Multer configured for multiple files\n');
+/**
+ * Wrapper that validates magic bytes AFTER upload.
+ * If the file content doesn't match the declared MIME type, delete it.
+ */
+export const upload = {
+  array: (fieldName, maxCount) => {
+    const multerMiddleware = multerUpload.array(fieldName, maxCount);
+
+    return (req, res, next) => {
+      multerMiddleware(req, res, (err) => {
+        if (err) {
+          return res.status(400).json({ success: false, message: err.message });
+        }
+
+        // Post-upload magic byte validation
+        if (req.files && req.files.length > 0) {
+          for (const file of req.files) {
+            if (!validateMagicBytes(file.path, file.mimetype)) {
+              // Delete the suspect file immediately
+              try { fs.unlinkSync(file.path); } catch { }
+              return res.status(400).json({
+                success: false,
+                message: 'File content does not match declared type. Upload rejected.'
+              });
+            }
+          }
+        }
+
+        next();
+      });
+    };
+  }
+};

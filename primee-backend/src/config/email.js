@@ -27,6 +27,7 @@ export const sendEmail = async (to, subject, htmlContent) => {
     return info;
   } catch (error) {
     console.error(`❌ Email Error: ${error.message}`);
-    throw error;
+    // Prevent crashing in development with placeholder credentials
+    return null;
   }
 };

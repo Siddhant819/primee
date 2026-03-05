@@ -9,6 +9,46 @@ import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
+// --- Error Boundary Component ---
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 p-8 text-center font-sans">
+          <div className="max-w-md">
+            <h2 className="text-4xl font-serif font-bold text-white mb-6 tracking-tighter italic">
+              Clinical <span className="font-light text-slate-400">Interruption</span>
+            </h2>
+            <p className="text-slate-400 mb-10 font-light leading-relaxed">
+              A temporary diagnostic error has occurred in the interface layer. Please refresh or return to core.
+            </p>
+            <button
+              onClick={() => window.location.href = "/"}
+              className="px-10 py-4 bg-white text-slate-950 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-cyan-500 transition-all"
+            >
+              Return to Core
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ===============================
    Lazy Loaded Public Pages
 ================================ */
@@ -49,27 +89,29 @@ const App = () => (
             </div>
           }
         >
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Layout><Index /></Layout>} />
-            <Route path="/about" element={<Layout><About /></Layout>} />
-            <Route path="/departments" element={<Layout><Departments /></Layout>} />
-            <Route path="/doctors" element={<Layout><Doctors /></Layout>} />
-            <Route path="/appointments" element={<Layout><Appointments /></Layout>} />
-            <Route path="/contact" element={<Layout><Contact /></Layout>} />
-            <Route path="/gallery" element={<Layout><GalleryPage /></Layout>} />
-            <Route path="/view-reports" element={<Layout><ViewReports /></Layout>} />
-            <Route path="/register" element={<Register />} />
-            <Route path="*" element={<Layout><NotFound /></Layout>} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Layout><Index /></Layout>} />
+              <Route path="/about" element={<Layout><About /></Layout>} />
+              <Route path="/departments" element={<Layout><Departments /></Layout>} />
+              <Route path="/doctors" element={<Layout><Doctors /></Layout>} />
+              <Route path="/appointments" element={<Layout><Appointments /></Layout>} />
+              <Route path="/contact" element={<Layout><Contact /></Layout>} />
+              <Route path="/gallery" element={<Layout><GalleryPage /></Layout>} />
+              <Route path="/view-reports" element={<Layout><ViewReports /></Layout>} />
+              <Route path="/register" element={<Register />} />
+              <Route path="*" element={<Layout><NotFound /></Layout>} />
 
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/patients" element={<AdminPatients />} />
-            <Route path="/admin/appointments" element={<AdminAppointments />} />
-            <Route path="/admin/messages" element={<AdminMessages />} />
-            <Route path="/admin/reports" element={<AdminUploadReports />} />
-          </Routes>
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/patients" element={<AdminPatients />} />
+              <Route path="/admin/appointments" element={<AdminAppointments />} />
+              <Route path="/admin/messages" element={<AdminMessages />} />
+              <Route path="/admin/reports" element={<AdminUploadReports />} />
+            </Routes>
+          </ErrorBoundary>
         </Suspense>
 
       </BrowserRouter>

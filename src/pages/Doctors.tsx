@@ -1,6 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { GraduationCap, Award, Calendar, ChevronRight } from "lucide-react";
+import { GraduationCap, Award, Calendar, ChevronRight, Phone } from "lucide-react";
+import { motion } from "framer-motion";
+import { Reveal } from "@/components/animations/Reveal";
+import { TiltCard } from "@/components/animations/TiltCard";
 
 const doctors = [
   {
@@ -64,80 +67,120 @@ const doctors = [
 const Doctors = () => {
   return (
     <div className="bg-white min-h-screen font-sans text-slate-900">
-      
+
       {/* Hero Section */}
-      <section className="relative py-32 flex items-center justify-center text-center overflow-hidden bg-slate-900">
-        <div 
+      <section className="relative h-[60vh] min-h-[450px] flex items-center bg-slate-950 overflow-hidden text-center">
+        <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('https://i.imgur.com/Qn0pz2o.jpg')" }}
         />
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-slate-950/80 backdrop-blur-[2px]" />
+
         <div className="relative container mx-auto px-6 z-10">
-          <div className="inline-block px-4 py-1.5 mb-8 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
-            <nav className="flex items-center gap-2 text-white text-[10px] font-bold uppercase tracking-widest">
-              <Link to="/" className="hover:opacity-70 transition-opacity">Home</Link>
-              <ChevronRight size={10} className="opacity-50" />
-              <span className="opacity-70">Doctors</span>
-            </nav>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-serif text-white mb-4 tracking-tight">
-            <span className="font-bold">Our</span> <span className="font-light">Doctors</span>
-          </h1>
-          <p className="text-white/90 max-w-2xl mx-auto leading-relaxed font-medium">
-            Meet our experienced doctors providing premium medical care in Biratnagar.
-          </p>
+          <Reveal>
+            <div className="inline-block px-4 py-1.5 mb-8 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
+              <nav className="flex items-center gap-2 text-white text-[10px] font-bold tracking-[0.4em] uppercase">
+                <Link to="/" className="hover:text-teal-400 transition-colors">Home</Link>
+                <ChevronRight size={10} className="text-teal-500" />
+                <span className="text-slate-400">Doctors</span>
+              </nav>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.3}>
+            <h1 className="text-5xl md:text-8xl font-serif text-white mb-6 tracking-tighter leading-none">
+              Our <span className="font-light italic text-slate-400">Medical Experts</span>
+            </h1>
+          </Reveal>
+
+          <Reveal delay={0.4}>
+            <p className="text-slate-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-light">
+              Meet our <span className="text-white font-medium">certified specialists</span> dedicated to
+              providing world-class medical care in Biratnagar.
+            </p>
+          </Reveal>
         </div>
       </section>
 
       {/* Doctors Grid */}
-      <section className="py-24">
-        <div className="container mx-auto px-6 max-w-7xl">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {doctors.map((doc) => (
-              <div 
-                key={doc.name} 
-                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow transform hover:-translate-y-1 duration-300 p-6 flex flex-col items-center text-center"
-              >
-                <div className="relative w-40 h-40 mb-4">
-                  <img 
-                    src={doc.image} 
-                    alt={doc.name} 
-                    className="w-full h-full object-cover rounded-full shadow-sm"
-                  />
-                  {doc.available && (
-                    <span className="absolute bottom-2 right-2 w-3 h-3 bg-green-500 rounded-full animate-pulse border border-white" />
-                  )}
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-1">{doc.name}</h3>
-                <p className="text-sm text-primary font-medium uppercase tracking-wide mb-3">{doc.specialty}</p>
-                <div className="text-xs text-slate-600 space-y-2 mb-4">
-                  <div className="flex items-center justify-center gap-1">
-                    <GraduationCap size={14} className="opacity-70" />
-                    <span className="line-clamp-2">{doc.qualification}</span>
+      <section className="py-32 bg-slate-50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="container mx-auto px-6 max-w-7xl relative z-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
+            {doctors.map((doc, idx) => (
+              <Reveal key={doc.name} delay={idx * 0.1}>
+                <TiltCard>
+                  <div className="group glass-card p-10 flex flex-col items-center text-center h-full border-white/60 hover:border-teal-400/30 overflow-hidden relative">
+                    <div className="absolute -right-6 -top-6 w-32 h-32 bg-teal-500/5 rounded-full group-hover:scale-150 transition-transform duration-700" />
+
+                    <div className="relative w-48 h-48 mb-8 p-3 bg-white rounded-full shadow-2xl">
+                      <img
+                        src={doc.image}
+                        alt={doc.name}
+                        className="w-full h-full object-cover rounded-full filter grayscale-[0.5] group-hover:grayscale-0 transition-all duration-500"
+                      />
+                      {doc.available && (
+                        <span className="absolute bottom-6 right-6 w-5 h-5 bg-teal-500 rounded-full border-4 border-white shadow-xl animate-pulse" />
+                      )}
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">{doc.name}</h3>
+                    <p className="text-xs text-teal-600 font-black uppercase tracking-[0.3em] mb-6 italic">{doc.specialty}</p>
+
+                    <div className="space-y-4 mb-10 w-full text-slate-500 font-light relative z-10 flex-grow">
+                      <div className="flex items-start justify-center gap-3 px-4">
+                        <GraduationCap size={18} className="text-teal-600 shrink-0 mt-1" />
+                        <span className="text-sm leading-relaxed">{doc.qualification}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 font-bold text-slate-400 uppercase tracking-widest text-[10px]">
+                        <Award size={14} className="text-teal-600" /> {doc.experience} Experience
+                      </div>
+                    </div>
+
+                    <Link to="/appointments" className="w-full">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="w-full bg-slate-950 text-white py-4 rounded-2xl font-bold hover:bg-teal-600 transition-colors flex items-center justify-center gap-3 shadow-xl"
+                      >
+                        <Calendar size={18} /> Book Consultation
+                      </motion.button>
+                    </Link>
                   </div>
-                  <div className="flex items-center justify-center gap-1 font-bold text-slate-500 uppercase tracking-widest">
-                    <Award size={12} className="opacity-70" /> {doc.experience} Experience
-                  </div>
-                </div>
-                <button className="bg-slate-900 text-white px-6 py-2 rounded-full font-bold hover:bg-slate-800 transition-colors flex items-center gap-2">
-                  <Calendar size={16} /> Book
-                </button>
-              </div>
+                </TiltCard>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* Appointment CTA */}
-      <section className="py-20 bg-slate-50 border-t border-slate-100">
-        <div className="container mx-auto px-6 text-center max-w-2xl">
-          <h2 className="text-3xl font-bold text-slate-900 mb-4">Need a Consultation?</h2>
-          <p className="text-slate-500 mb-8 font-light leading-relaxed">
-            Our specialists are available for scheduled appointments and emergency trauma care.
-          </p>
-          <button className="bg-slate-900 text-white px-10 py-4 rounded-full font-bold hover:bg-slate-800 transition-all shadow-xl active:scale-95 flex items-center gap-2 mx-auto">
-            <Calendar size={18} /> Schedule Visit
-          </button>
+      <section className="py-32 bg-white">
+        <div className="container mx-auto px-6 text-center max-w-4xl">
+          <Reveal>
+            <div className="glass-morphism p-16 rounded-[3.5rem] border-slate-100 shadow-[0_50px_100px_rgba(0,0,0,0.05)] relative overflow-hidden">
+              <div className="absolute -left-20 -top-20 w-64 h-64 bg-teal-500/5 blur-[80px] rounded-full" />
+              <div className="relative z-10">
+                <h2 className="text-4xl md:text-5xl font-serif text-slate-900 mb-6 tracking-tighter italic">
+                  Need a <span className="font-bold underline decoration-teal-500/30">Consultation</span>?
+                </h2>
+                <p className="text-slate-500 mb-12 text-xl font-light leading-relaxed max-w-2xl mx-auto">
+                  Our specialists are available for scheduled appointments and <span className="text-slate-900 font-medium">emergency trauma care</span>.
+                </p>
+                <Link to="/contact">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-slate-950 text-white px-12 py-5 rounded-2xl font-bold hover:bg-teal-600 transition-all shadow-2xl flex items-center gap-3 mx-auto"
+                  >
+                    <Phone size={20} /> Emergency Response
+                  </motion.button>
+                </Link>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
     </div>

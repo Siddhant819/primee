@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Clock, ArrowLeft, Phone, User, Copy } from "lucide-react";
+import { CheckCircle, Clock, ArrowLeft, Phone, User, Copy, Calendar, Mail, MessageSquare, ChevronRight, AlertCircle, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Reveal } from "@/components/animations/Reveal";
 import { toast } from "sonner";
-import { API_BASE_URL } from "@/api/config";
+import { API_BASE_URL, apiCall } from "@/api/config";
 
 const AdminAppointments = () => {
   const navigate = useNavigate();
@@ -24,11 +26,7 @@ const AdminAppointments = () => {
 
   const fetchAppointments = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE_URL}/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
+      const data = await apiCall("/appointments");
       if (data.success) {
         setAppointments(data.appointments || []);
       }
@@ -42,30 +40,22 @@ const AdminAppointments = () => {
 
   const confirmAppointment = async (id: string) => {
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE_URL}/appointments/${id}/confirm`, {
+      const data = await apiCall(`/appointments/${id}/confirm`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ notes }),
       });
-      const data = await response.json();
       if (data.success) {
         const patientId = data.appointment.patientId?.patientId;
         setCreatedPatientId(patientId);
-        
-        toast.success(
-          `Appointment confirmed! New Patient ID: ${patientId}`
-        );
+
+        toast.success(`Appointment confirmed! New Patient ID: ${patientId}`);
         setSelectedAppointment(null);
         setNotes("");
         fetchAppointments();
         setActiveTab("confirmed");
-        
-        // Show success notification for 5 seconds
-        setTimeout(() => setCreatedPatientId(null), 5000);
+
+        // Show success notification for 10 seconds (more premium duration)
+        setTimeout(() => setCreatedPatientId(null), 10000);
       }
     } catch (error) {
       toast.error("Failed to confirm appointment");
@@ -78,244 +68,258 @@ const AdminAppointments = () => {
     toast.success("Patient ID copied to clipboard!");
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
-
   const pendingAppointments = appointments.filter((apt: any) => apt.status === "pending");
   const confirmedAppointments = appointments.filter((apt: any) => apt.status === "confirmed");
 
   const displayedAppointments = activeTab === "pending" ? pendingAppointments : confirmedAppointments;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-3">
-          <button
-            onClick={() => navigate("/admin/dashboard")}
-            className="text-slate-600 hover:text-slate-900"
-          >
-            <ArrowLeft size={24} />
-          </button>
-          <h1 className="text-2xl font-bold text-slate-900">Appointment Management</h1>
-        </div>
+    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 overflow-x-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-teal-500/5 blur-[120px] rounded-full" />
       </div>
 
-      {/* Success Banner for Created Patient */}
-      {createdPatientId && (
-        <div className="bg-green-50 border-b-2 border-green-500 p-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <User size={24} className="text-green-600" />
-              <div>
-                <p className="font-semibold text-green-900">Patient Created Successfully!</p>
-                <p className="text-sm text-green-800">New Patient ID: <span className="font-mono font-bold">{createdPatientId}</span></p>
-              </div>
-            </div>
+      {/* Modern Top Header */}
+      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-3xl border-b border-white/5 py-8 px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-8">
             <button
-              onClick={() => copyPatientId(createdPatientId)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-all"
+              onClick={() => navigate("/admin/dashboard")}
+              className="p-4 bg-white/5 rounded-[1.5rem] border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all hover:scale-110 active:scale-95 shadow-xl shadow-black/20"
             >
-              <Copy size={18} />
-              Copy ID
+              <ArrowLeft size={24} />
+            </button>
+            <Reveal>
+              <div>
+                <p className="text-[10px] uppercase font-black text-blue-500 tracking-[0.5em] mb-2 font-mono">Operations Module</p>
+                <h1 className="text-4xl font-serif font-bold text-white tracking-tighter">Appointment <span className="font-light italic text-slate-400">Control</span></h1>
+              </div>
+            </Reveal>
+          </div>
+
+          <div className="flex bg-white/5 p-1.5 rounded-[2rem] border border-white/10 shadow-lg relative h-fit">
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`relative z-10 px-8 py-3.5 rounded-[1.5rem] text-[10px] uppercase font-black tracking-widest transition-all duration-500 flex items-center gap-3 ${activeTab === "pending" ? "text-slate-950" : "text-slate-400 hover:text-white"
+                }`}
+            >
+              <Clock size={16} />
+              Pending Entry ({pendingAppointments.length})
+              {activeTab === "pending" && (
+                <motion.div layoutId="tab-bg" className="absolute inset-0 bg-blue-500 rounded-[1.5rem] -z-10 shadow-2xl shadow-blue-500/40" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("confirmed")}
+              className={`relative z-10 px-8 py-3.5 rounded-[1.5rem] text-[10px] uppercase font-black tracking-widest transition-all duration-500 flex items-center gap-3 ${activeTab === "confirmed" ? "text-slate-950" : "text-slate-400 hover:text-white"
+                }`}
+            >
+              <CheckCircle size={16} />
+              Confirmed ({confirmedAppointments.length})
+              {activeTab === "confirmed" && (
+                <motion.div layoutId="tab-bg" className="absolute inset-0 bg-teal-500 rounded-[1.5rem] -z-10 shadow-2xl shadow-teal-500/40" />
+              )}
             </button>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        {/* Tab Navigation */}
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => setActiveTab("pending")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === "pending"
-                ? "bg-yellow-600 text-white"
-                : "bg-white text-slate-900 border border-slate-200 hover:border-slate-300"
-            }`}
+      {/* Patient Creation Banner */}
+      <AnimatePresence>
+        {createdPatientId && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-teal-500 overflow-hidden"
           >
-            <Clock size={20} />
-            Pending Appointments ({pendingAppointments.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("confirmed")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-              activeTab === "confirmed"
-                ? "bg-green-600 text-white"
-                : "bg-white text-slate-900 border border-slate-200 hover:border-slate-300"
-            }`}
-          >
-            <CheckCircle size={20} />
-            Confirmed Appointments ({confirmedAppointments.length})
-          </button>
-        </div>
-
-        {loading ? (
-          <p className="text-center text-slate-600">Loading...</p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Appointments List */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                {displayedAppointments.length === 0 ? (
-                  <p className="p-6 text-center text-slate-600">
-                    No {activeTab === "pending" ? "pending" : "confirmed"} appointments
-                  </p>
-                ) : (
-                  <table className="w-full">
-                    <thead className={`text-white ${
-                      activeTab === "pending" ? "bg-yellow-600" : "bg-green-600"
-                    }`}>
-                      <tr>
-                        <th className="px-6 py-3 text-left">Patient</th>
-                        <th className="px-6 py-3 text-left">Department</th>
-                        <th className="px-6 py-3 text-left">Date</th>
-                        <th className="px-6 py-3 text-left">Patient ID</th>
-                        <th className="px-6 py-3 text-left">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedAppointments.map((apt: any) => (
-                        <tr
-                          key={apt._id}
-                          className="border-b border-slate-200 hover:bg-slate-50"
-                        >
-                          <td className="px-6 py-3">{apt.patientName}</td>
-                          <td className="px-6 py-3">{apt.department}</td>
-                          <td className="px-6 py-3">
-                            {new Date(apt.appointmentDate).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-3">
-                            {apt.patientId ? (
-                              <span className="font-mono text-blue-600 font-semibold">
-                                {apt.patientId?.patientId || "-"}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3">
-                            {apt.status === "pending" && (
-                              <button
-                                onClick={() => setSelectedAppointment(apt)}
-                                className="text-blue-600 hover:text-blue-800 font-semibold"
-                              >
-                                Confirm
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+            <div className="max-w-7xl mx-auto px-12 py-6 flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white"><User size={24} /></div>
+                <div>
+                  <h4 className="text-slate-950 font-black text-[10px] uppercase tracking-widest mb-1 italic">Genetic Sequence Assigned</h4>
+                  <p className="text-white font-medium">Patient synchronized. ID: <span className="font-mono font-black border-b border-white text-lg">{createdPatientId}</span></p>
+                </div>
               </div>
+              <button
+                onClick={() => copyPatientId(createdPatientId)}
+                className="px-8 py-3 bg-slate-950 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl hover:bg-slate-900 transition-all active:scale-95 flex items-center gap-3"
+              >
+                <Copy size={16} /> Copy Index
+              </button>
             </div>
-
-            {/* Confirmation Panel */}
-            {selectedAppointment && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">
-                  Confirm Appointment
-                </h3>
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <p className="text-sm text-slate-600">Patient Name</p>
-                    <p className="font-semibold">{selectedAppointment.patientName}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-600 flex items-center gap-2">
-                      <Phone size={16} />
-                      Phone Number
-                    </p>
-                    <p className="font-semibold text-blue-600">
-                      {selectedAppointment.phone || "Not provided"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-600">Email</p>
-                    <p className="font-semibold">{selectedAppointment.email}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-600">Department</p>
-                    <p className="font-semibold">{selectedAppointment.department}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-600">Appointment Date</p>
-                    <p className="font-semibold">
-                      {new Date(selectedAppointment.appointmentDate).toLocaleDateString()}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-600">Time Slot</p>
-                    <p className="font-semibold">{selectedAppointment.timeSlot}</p>
-                  </div>
-
-                  {selectedAppointment.reason && (
-                    <div>
-                      <p className="text-sm text-slate-600">Reason</p>
-                      <p className="font-semibold text-slate-900">{selectedAppointment.reason}</p>
-                    </div>
-                  )}
-
-                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                    <p className="text-xs text-blue-700">
-                      ℹ️ A new patient record will be created with this appointment when confirmed.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
-                      Notes for Patient
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
-                      placeholder="Add any important notes..."
-                      rows={4}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => confirmAppointment(selectedAppointment._id)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                  >
-                    <CheckCircle size={18} />
-                    Confirm & Create Patient
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedAppointment(null);
-                      setNotes("");
-                    }}
-                    className="flex-1 px-4 py-2 bg-slate-300 text-slate-900 rounded-lg hover:bg-slate-400"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-8 py-16">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-12 items-start">
+
+          {/* List Section */}
+          <div className="xl:col-span-2 space-y-8">
+            <AnimatePresence mode="wait">
+              {loading ? (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center py-40 gap-8"
+                >
+                  <div className="w-16 h-16 border-4 border-white/5 border-t-blue-500 rounded-full animate-spin shadow-2xl shadow-blue-500/20" />
+                  <p className="text-[10px] uppercase font-black text-slate-500 tracking-[0.5em] italic">Synchronizing Logs...</p>
+                </motion.div>
+              ) : displayedAppointments.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="glass-morphism p-20 rounded-[4rem] border-white/5 text-center bg-white/[0.02]"
+                >
+                  <Clock size={64} className="mx-auto text-slate-800 mb-8 opacity-20" />
+                  <h3 className="text-3xl font-serif font-bold text-slate-300 mb-4 italic">Operational <span className="text-slate-500 font-light">Stasis</span></h3>
+                  <p className="text-slate-500 font-light max-w-sm mx-auto italic">No active appointment streams detected for the current filter index.</p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="grid grid-cols-1 gap-6"
+                >
+                  {displayedAppointments.map((apt: any, idx) => (
+                    <Reveal key={apt._id} delay={idx * 0.05}>
+                      <motion.div
+                        whileHover={{ x: 10 }}
+                        onClick={() => apt.status === "pending" && setSelectedAppointment(apt)}
+                        className={`glass-morphism p-8 rounded-[2.5rem] border border-white/5 hover:border-white/10 transition-all cursor-pointer group flex items-center justify-between ${selectedAppointment?._id === apt._id ? 'bg-blue-500/10 border-blue-500/20 ring-1 ring-blue-500/20' : 'bg-white/[0.01]'
+                          }`}
+                      >
+                        <div className="flex items-center gap-8">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${activeTab === "pending" ? 'bg-blue-500/20 text-blue-400' : 'bg-teal-500/20 text-teal-400'
+                            }`}>
+                            <User size={24} />
+                          </div>
+                          <div>
+                            <h4 className="text-xl font-bold text-white mb-1 group-hover:text-blue-400 transition-colors uppercase tracking-tight">{apt.patientName}</h4>
+                            <div className="flex gap-4 items-center">
+                              <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest flex items-center gap-2">
+                                <Calendar size={12} className="text-slate-600" /> {new Date(apt.appointmentDate).toLocaleDateString()}
+                              </p>
+                              <span className="w-1 h-1 bg-slate-800 rounded-full" />
+                              <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">{apt.department}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-12">
+                          <div className="hidden md:block text-right">
+                            {apt.patientId ? (
+                              <>
+                                <p className="text-[9px] uppercase font-black text-slate-600 tracking-tighter mb-1">Assigned Index</p>
+                                <p className="font-mono text-teal-500 font-bold text-sm tracking-widest">{apt.patientId?.patientId}</p>
+                              </>
+                            ) : (
+                              <p className="text-slate-700 italic text-[10px] uppercase font-black italic tracking-widest">Unassigned Index</p>
+                            )}
+                          </div>
+                          {apt.status === "pending" ? (
+                            <button className="p-4 bg-white/5 text-blue-400 rounded-2xl group-hover:bg-blue-500 group-hover:text-slate-950 transition-all shadow-xl shadow-black/20">
+                              <ChevronRight size={20} />
+                            </button>
+                          ) : (
+                            <div className="w-12 h-12 rounded-full border border-teal-500/50 flex items-center justify-center text-teal-500">
+                              <CheckCircle size={20} />
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </Reveal>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          /* Details Panel Section */
+          <aside className="sticky top-40 space-y-8">
+            <AnimatePresence mode="wait">
+              {selectedAppointment ? (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                  className="glass-morphism p-10 rounded-[3.5rem] border border-blue-500/20 bg-blue-500/[0.03] shadow-[0_50px_100px_rgba(0,0,0,0.3)]"
+                >
+                  <div className="flex justify-between items-start mb-10">
+                    <h3 className="text-2xl font-serif font-bold text-white tracking-tight italic">Protocol <span className="font-light text-slate-400">Review</span></h3>
+                    <button onClick={() => setSelectedAppointment(null)} className="p-2 text-slate-600 hover:text-white transition-colors"><Trash2 size={20} /></button>
+                  </div>
+
+                  <div className="space-y-8 mb-12">
+                    <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-4">
+                      <div className="flex items-center gap-4 text-slate-400">
+                        <Phone size={16} className="text-blue-500" />
+                        <span className="text-sm font-bold tracking-widest font-mono text-blue-400 uppercase">{selectedAppointment.phone || "No Vox Index"}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-slate-400">
+                        <Mail size={16} className="text-blue-500" />
+                        <span className="text-sm truncate font-medium text-slate-300">{selectedAppointment.email}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-slate-400">
+                        <Clock size={16} className="text-blue-500" />
+                        <span className="text-sm font-bold text-white bg-blue-500/20 px-3 py-1 rounded-full">{selectedAppointment.timeSlot}</span>
+                      </div>
+                    </div>
+
+                    {selectedAppointment.reason && (
+                      <div className="space-y-2 px-2">
+                        <p className="text-[10px] uppercase font-black text-slate-600 tracking-widest italic flex items-center gap-4">
+                          <span className="w-8 h-px bg-slate-800" /> Patient Narrative
+                        </p>
+                        <p className="text-sm text-slate-400 italic leading-relaxed">"{selectedAppointment.reason}"</p>
+                      </div>
+                    )}
+
+                    <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-3xl flex items-start gap-4">
+                      <AlertCircle size={20} className="text-blue-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-blue-300 font-medium leading-relaxed uppercase tracking-tighter">Initializing this protocol will permanently ingest data into the clinical index.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-4 italic">Injection Notes</label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-3xl p-6 text-white text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/30 transition-all placeholder:text-slate-800 resize-none"
+                        placeholder="Add procedural clinical notes..."
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <button
+                      onClick={() => confirmAppointment(selectedAppointment._id)}
+                      className="w-full py-5 bg-blue-500 text-slate-950 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-blue-500/20 hover:bg-blue-400 transition-all active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      <CheckCircle size={18} /> Execute Synchronization
+                    </button>
+                    <button
+                      onClick={() => { setSelectedAppointment(null); setNotes("") }}
+                      className="w-full py-5 bg-white/5 border border-white/10 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+                    >
+                      Abort Control
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="glass-morphism p-10 rounded-[3.5rem] border border-white/5 border-dashed bg-white/[0.01] text-center"
+                >
+                  <MessageSquare size={48} className="mx-auto text-slate-800 mb-6 opacity-20" />
+                  <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic leading-loose">Awaiting node selection for synchronization...</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </aside>
+        </div>
+      </main>
     </div>
   );
 };

@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OWE0MjI0ZWE2ZWU4ZDU1NzQwYzBmNDEiLCJpYXQiOjE3NzI2NDEwMjIsImV4cCI6MTc3MjcyNzQyMn0.NfuqSFJw2eig9sdkGblN1VfdozXtTirkKQ7TEvmleSA",
+  "user": {
+    "id": "69a4224ea6ee8d55740c0f41",
+    "name": "Sidd",
+    "email": "admin@example.com",
+    "role": "admin"
+  }
+}
