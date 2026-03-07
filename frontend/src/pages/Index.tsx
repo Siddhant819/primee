@@ -154,34 +154,52 @@ const Index = () => {
         </div>
       </section>
 
-      {/* --- 3. DEPARTMENTS PREVIEW --- */}
-      <section className="py-32 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-20">
-            <h2 className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase mb-4">Specialties</h2>
-            <h3 className="text-4xl md:text-5xl font-serif text-slate-900 tracking-tight">
-              <span className="font-bold text-slate-900">Our</span> <span className="font-light opacity-90">Departments</span>
-            </h3>
+     {/* --- 3. DEPARTMENTS PREVIEW --- */}
+<section className="py-32 bg-white">
+  <div className="container mx-auto px-6">
+    <div className="text-center mb-20">
+      <h2 className="text-[10px] font-bold text-slate-400 tracking-[0.4em] uppercase mb-4">Specialties</h2>
+      <h3 className="text-4xl md:text-5xl font-serif text-slate-900 tracking-tight">
+        <span className="font-bold text-slate-900">Our</span> <span className="font-light opacity-90">Departments</span>
+      </h3>
+    </div>
+    
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {departments.map((d) => (
+        <Link
+          key={d.name}
+          to={`/departments/${d.name.toLowerCase().replace(/\s+/g, "-")}`} // Converts name to slug
+          className="group p-10 rounded-[2.5rem] border border-slate-100 bg-white hover:bg-slate-50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 block"
+        >
+          <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 mb-8 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-inner">
+            <d.icon size={26} strokeWidth={1.5} />
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {departments.map((d) => (
-              <div
-                key={d.name}
-                className="group p-10 rounded-[2.5rem] border border-slate-100 bg-white hover:bg-slate-50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2"
-              >
-                <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 mb-8 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-inner">
-                  <d.icon size={26} strokeWidth={1.5} />
-                </div>
-                <h4 className="text-xl font-bold mb-3 text-slate-900 tracking-tight">
-                  {d.name}
-                </h4>
-                <p className="text-slate-500 text-sm leading-relaxed font-light">{d.desc}</p>
-              </div>
-            ))}
+          <h4 className="text-xl font-bold mb-3 text-slate-900 tracking-tight">
+            {d.name}
+          </h4>
+          <p className="text-slate-500 text-sm leading-relaxed font-light">{d.desc}</p>
+          <div className="flex items-center text-xs font-bold text-slate-400 group-hover:text-slate-900 gap-2 uppercase tracking-widest mt-4">
+            View Department <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />
           </div>
+        </Link>
+      ))}
+
+      {/* View All Departments Card */}
+      <Link
+        to="/departments"
+        className="group p-10 rounded-[2.5rem] border border-slate-100 bg-white hover:bg-slate-50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 flex flex-col items-center justify-center text-center"
+      >
+        <div className="h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 mb-8 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-inner">
+          <ArrowRight size={26} />
         </div>
-      </section>
+        <h4 className="text-xl font-bold mb-3 text-slate-900 tracking-tight">View All Departments</h4>
+        <p className="text-slate-500 text-sm leading-relaxed font-light">
+          Explore all our specialized medical services in detail
+        </p>
+      </Link>
+    </div>
+  </div>
+</section>
 
       {/* --- 4. DOCTORS CALLOUT --- */}
       <section className="py-24 container mx-auto px-6">
